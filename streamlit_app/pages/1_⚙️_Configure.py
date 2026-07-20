@@ -61,6 +61,12 @@ with st.form("business_config_form"):
             value=float(config.discount_percent),
             step=1.0,
         )
+    delivery_fee = st.number_input(
+        "Delivery fee when order is below the free-delivery minimum (₹)",
+        min_value=0.0,
+        value=float(config.delivery_fee),
+        step=5.0,
+    )
 
     st.subheader("Payment")
     col3, col4 = st.columns(2)
@@ -70,6 +76,12 @@ with st.form("business_config_form"):
         )
     with col4:
         payment_upi_id = st.text_input("Payment UPI ID", value=config.payment_upi_id)
+
+    accepted_receiver_names = st.text_input(
+        "Accepted receiver names on payment screenshots (comma-separated)",
+        value=config.accepted_receiver_names,
+        help="Any one of these names appearing as the payment receiver is accepted.",
+    )
 
     st.subheader("Custom instructions")
     extra_instructions = st.text_area(
@@ -93,8 +105,10 @@ if submitted:
         free_delivery_radius_km=free_delivery_radius_km,
         delivery_time_minutes=int(delivery_time_minutes),
         discount_percent=discount_percent,
+        delivery_fee=delivery_fee,
         payment_phone_number=payment_phone_number,
         payment_upi_id=payment_upi_id,
+        accepted_receiver_names=accepted_receiver_names,
         extra_instructions=extra_instructions or None,
     )
     st.success("Settings saved.")

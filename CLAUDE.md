@@ -95,20 +95,31 @@ later stage's scope until the current stage works end-to-end.
 - Custom cake requests: tell them to call **7015943285**.
 - Bulk/corporate order requests: tell them to call **7777777777**.
 
-### Stage 2 — Ordering + Payment Validation
+### Stage 2 — Ordering + Payment Validation (implemented)
 
-- Adds full cart management (add/remove/update/show/clear), checkout with
-  25% discount, delivery fee logic, minimum cart (₹300), delivery slot
-  selection, and collection of customer details (name, phone, email,
-  Google Maps location, address).
-- Adds the Payment tool: customer pays in advance to the configured
-  phone/UPI number, uploads a payment screenshot, and the bot validates it
-  via OCR + Vision (receiver number/UPI and receiver name — see
-  `MASTER_PROMPT.md` for accepted receiver names).
+- Full cart management (`app/agent/tools/cart_tool.py`: add/remove/update/
+  show/clear), checkout with configurable discount and delivery-fee logic
+  (`compute_totals`), delivery slot selection (`app/services/
+  delivery_slots.py`), and collection of customer details (name, phone,
+  email, address, optional Maps link) — all driven by NLU-extracted
+  intents in `app/agent/graph.py` (`cart_add`, `checkout`,
+  `provide_customer_details`, `provide_delivery_slot`, etc.).
+- The Payment tool (`app/agent/tools/payment_tool.py`) validates a
+  customer-uploaded screenshot via a single vision-capable Groq call
+  (combined OCR + understanding — see `LLMService.complete_with_image`,
+  `GROQ_VISION_MODEL`), checking receiver number/UPI and receiver name
+  against `BusinessConfig.accepted_receiver_names`. **The vision model
+  name and its JSON-extraction behavior are unverified against a live
+  Groq vision endpoint** (this was built and tested with a stubbed LLM,
+  since this environment can't reach the Groq API) — if screenshot
+  validation misbehaves in production, check `GROQ_VISION_MODEL` is a
+  real, current Groq vision model ID first.
 - On successful validation, the bot confirms the order to the customer
-  (Order ID generated) — but the confirmation email is **not** part of
-  this stage yet. Nothing is written to a database; order state lives
-  only in the conversation.
+  (Order ID generated via `app/agent/tools/order_tool.py`) — but the
+  confirmation email is **not** part of this stage yet. Nothing is
+  written to a database; cart/customer/delivery/payment state lives only
+  in `st.session_state` for the browser session (see
+  `streamlit_app/Home.py`).
 - Custom cake and bulk order routing (call the relevant number) still
   apply — this stage does not build custom-cake or bulk-order checkout.
 

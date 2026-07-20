@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     groq_api_key: str
     groq_base_url: str = "https://api.groq.com/openai/v1"
     groq_model: str = "llama-3.3-70b-versatile"
+    # Vision-capable model, used only for payment screenshot validation.
+    groq_vision_model: str = "llama-3.2-90b-vision-preview"
 
     order_phone_number: str = "7015943285"
     custom_cake_phone_number: str = "7015943285"

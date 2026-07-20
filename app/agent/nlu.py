@@ -9,7 +9,14 @@ from app.store.models import BusinessConfig
 _VALID_INTENTS = {
     "menu_query",
     "feedback",
-    "order_request",
+    "cart_add",
+    "cart_remove",
+    "cart_update",
+    "cart_show",
+    "cart_clear",
+    "checkout",
+    "provide_customer_details",
+    "provide_delivery_slot",
     "custom_cake_request",
     "bulk_order_request",
     "general",
@@ -25,6 +32,14 @@ class NLUResult:
     order_id: str | None
     platform: str | None
     feedback_message: str | None
+    cart_item_name: str | None
+    cart_quantity: int | None
+    customer_name: str | None
+    customer_phone: str | None
+    customer_email: str | None
+    customer_address: str | None
+    maps_link: str | None
+    delivery_slot_text: str | None
 
 
 def _safe_platform(raw: object) -> str | None:
@@ -32,6 +47,16 @@ def _safe_platform(raw: object) -> str | None:
         return None
     label = raw.lower()
     return label if label in _VALID_PLATFORMS else None
+
+
+def _safe_int(raw: object) -> int | None:
+    if isinstance(raw, bool):
+        return None
+    if isinstance(raw, int):
+        return raw
+    if isinstance(raw, str) and raw.strip().lstrip("-").isdigit():
+        return int(raw.strip())
+    return None
 
 
 class NLUService:
@@ -45,7 +70,7 @@ class NLUService:
                 {"role": "user", "content": message},
             ],
             temperature=0.0,
-            max_tokens=300,
+            max_tokens=400,
         )
 
         try:
@@ -63,4 +88,12 @@ class NLUService:
             order_id=data.get("order_id"),
             platform=_safe_platform(data.get("platform")),
             feedback_message=data.get("feedback_message"),
+            cart_item_name=data.get("cart_item_name"),
+            cart_quantity=_safe_int(data.get("cart_quantity")),
+            customer_name=data.get("customer_name"),
+            customer_phone=data.get("customer_phone"),
+            customer_email=data.get("customer_email"),
+            customer_address=data.get("customer_address"),
+            maps_link=data.get("maps_link"),
+            delivery_slot_text=data.get("delivery_slot_text"),
         )

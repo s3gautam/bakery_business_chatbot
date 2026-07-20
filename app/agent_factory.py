@@ -1,7 +1,9 @@
 from app.agent.graph import AgentDependencies, build_graph
 from app.agent.nlu import NLUService
+from app.agent.tools.cart_tool import CartTool
 from app.agent.tools.feedback_tool import FeedbackTool
 from app.agent.tools.menu_tool import MenuTool
+from app.agent.tools.payment_tool import PaymentTool
 from app.config import get_settings
 from app.services.business_hours import BusinessHoursService
 from app.services.email_service import EmailService
@@ -36,5 +38,7 @@ def build_agent():
         feedback_tool=FeedbackTool(
             email_service, settings.feedback_email_to, business_config.business_name
         ),
+        cart_tool=CartTool(menu_store),
+        payment_tool=PaymentTool(llm_service),
     )
     return build_graph(deps)

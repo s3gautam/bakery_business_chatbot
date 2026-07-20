@@ -1,10 +1,11 @@
-# WarmOven AI Ordering Assistant — Stage 1
+# AI Ordering Assistant — Stage 1 + 2
 
-Stage 1 of the WarmOven chatbot: menu Q&A, recommendations, and customer
-feedback collection, in English, Hindi, and Hinglish (auto-detected). No
-cart, checkout, or payment yet — order requests are routed to a phone
-number. See `MASTER_PROMPT.md` for full product behavior and `CLAUDE.md`
-for engineering standards and the full 3-stage roadmap.
+Menu Q&A, recommendations, and customer feedback collection (Stage 1),
+plus full in-chat ordering: cart, checkout, delivery slots, and payment
+screenshot validation (Stage 2) — in English, Hindi, and Hinglish
+(auto-detected). Order confirmation emails are Stage 3 (not built yet).
+See `MASTER_PROMPT.md` for full product behavior and `CLAUDE.md` for
+engineering standards and the full 3-stage roadmap.
 
 ## Stack
 
@@ -23,7 +24,9 @@ pip install -r requirements.txt
 
 cp .env.example .env
 # fill in GROQ_API_KEY at minimum; SMTP_USERNAME/SMTP_PASSWORD to enable
-# feedback emails (use a Gmail App Password, not your normal password)
+# feedback emails (use a Gmail App Password, not your normal password).
+# GROQ_VISION_MODEL is used for payment screenshot validation — verify
+# it's a current Groq vision model ID before relying on it.
 
 streamlit run streamlit_app/Home.py
 ```
@@ -48,9 +51,23 @@ fallback set `DEV_DISABLE_SSL_VERIFY=true` in `.env`.
   - delivery time
   - Swiggy/Zomato flat discount %
   - payment phone number and UPI ID
+  - accepted receiver names on payment screenshots
   - freeform extra instructions for the assistant
+- **🍰 Menu** — view the current menu and re-sync it from Swiggy/Zomato.
 
 These settings live in `data/business_config.json`.
+
+## Ordering (Stage 2)
+
+Customers order directly in chat: "add 2 chocolate cakes" builds a cart,
+"show cart" reviews it, "checkout" starts the flow (collects name/phone/
+email/address, then a delivery slot, then shows payment instructions).
+Payment is advance-only — the customer uploads a screenshot (a file
+uploader appears once payment is due), which is validated in one call to
+a vision-capable Groq model (no separate OCR library). On success, an
+Order ID is generated and the order is confirmed; nothing is written to
+a database — cart/customer/order state lives only in the browser's
+`st.session_state` for that session.
 
 ## Syncing the menu
 
