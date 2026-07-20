@@ -30,6 +30,53 @@ added yet. As the project grows, update this file with:
 _To be filled in once the project is initialized (e.g. `npm install`,
 `npm run dev`, `npm test`)._
 
+## Development Roadmap
+
+Build this project in **3 incremental stages**. Do not jump ahead to a
+later stage's scope until the current stage works end-to-end.
+
+### Stage 1 — Menu & Feedback Bot (no ordering)
+
+- Chatbot answers menu questions (items, prices, ingredients, flavours,
+  recommendations, eggless/chocolate/fruit cakes, etc.) from the database
+  only — never hallucinate.
+- Chatbot collects customer feedback (Order ID, platform, feedback text)
+  and stores it — no refund/cashback/replacement promises.
+- Language auto-detection (English / Hindi / Hinglish).
+- Business-hours-aware messaging.
+- **No cart, no checkout, no payment.** If the customer wants to place an
+  order, tell them to call **7015943285**.
+- Custom cake requests: tell them to call **7015943285**.
+- Bulk/corporate order requests: tell them to call **7777777777**.
+
+### Stage 2 — Ordering + Payment Validation
+
+- Adds full cart management (add/remove/update/show/clear), checkout with
+  25% discount, delivery fee logic, minimum cart (₹300), delivery slot
+  selection, and collection of customer details (name, phone, email,
+  Google Maps location, address).
+- Adds the Payment tool: customer pays in advance to the configured
+  phone/UPI number, uploads a payment screenshot, and the bot validates it
+  via OCR + Vision (receiver number/UPI and receiver name — see
+  `MASTER_PROMPT.md` for accepted receiver names).
+- On successful validation, the bot confirms the order to the customer
+  (Order ID generated, order saved) — but email confirmation is **not**
+  part of this stage yet.
+- Custom cake and bulk order routing (call the relevant number) still
+  apply — this stage does not build custom-cake or bulk-order checkout.
+
+### Stage 3 — Order Confirmation Emails
+
+- Adds the Email tool: after payment validation succeeds and the order is
+  confirmed, send confirmation emails (with retry on failure) to:
+  - the admin inbox (`gsiddhant947@gmail.com`)
+  - the customer's email
+- Email contains full order summary per `MASTER_PROMPT.md` (customer
+  details, address, maps link, items, delivery slot, subtotal, discount,
+  delivery fee, total, payment status, order ID).
+- This is the stage where the full ordering flow described in
+  `MASTER_PROMPT.md` becomes complete end-to-end.
+
 ## LLM Provider
 
 - The LLM provider is **Groq** (OpenAI-compatible API).

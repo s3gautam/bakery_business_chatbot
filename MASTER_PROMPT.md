@@ -191,6 +191,18 @@ Say
 
 ---
 
+# Custom Cakes
+
+If customer requests a custom cake
+
+(custom design, custom message, custom size/shape not on the menu)
+
+Ask them to call
+
+7015943285
+
+---
+
 # Recommendations
 
 Bot should recommend products naturally.
@@ -325,15 +337,21 @@ Payment Methods
 
 Phone Number
 
-8888888888
+7479219293
 
 UPI
 
-888888888888@paytm
+7479219293@paytm
 
-Receiver Name
+Receiver Name (any of the following is acceptable)
 
 Kouzina Kafe
+
+Seema Gautam
+
+Siddhant Gautam
+
+Siddharth Gautam
 
 Only advance payment.
 
@@ -355,17 +373,23 @@ Validate
 
 Receiver Number
 
-8888888888
+7479219293
 
 or
 
 UPI
 
-888888888888@paytm
+7479219293@paytm
 
-Receiver Name
+Receiver Name (any of the following is acceptable)
 
 Kouzina Kafe
+
+Seema Gautam
+
+Siddhant Gautam
+
+Siddharth Gautam
 
 If validation fails
 
