@@ -86,7 +86,9 @@ def build_graph(deps: AgentDependencies):
         return {"detected_language": language}
 
     async def classify_intent(state: AgentState) -> AgentState:
-        result = await deps.nlu_service.classify(state["user_message"], deps.business_config)
+        result = await deps.nlu_service.classify(
+            state["user_message"], deps.business_config, state.get("history")
+        )
         return {"intent": result.intent, "nlu_result": result}
 
     async def handle_menu_query(state: AgentState) -> AgentState:

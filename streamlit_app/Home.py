@@ -65,6 +65,9 @@ if user_input or payment_screenshot:
         **st.session_state.order_state,
         "conversation_id": st.session_state.conversation_id,
         "user_message": user_input or "I've uploaded my payment screenshot.",
+        # Prior turns (excluding the one just appended above) so the NLU
+        # layer can resolve references like "yes add 1".
+        "history": st.session_state.messages[-9:-1],
     }
     if payment_screenshot is not None:
         image_bytes = payment_screenshot.getvalue()

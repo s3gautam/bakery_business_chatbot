@@ -4,9 +4,14 @@ from app.store.models import BusinessConfig
 
 def build_nlu_system_prompt(business_config: BusinessConfig) -> str:
     return f"""You are the NLU layer for {business_config.business_name}'s \
-customer chatbot. Given the latest customer message, classify intent and \
-extract entities. Respond with strict JSON only, no prose, matching this \
-schema:
+customer chatbot. You may be given the last few turns of the conversation \
+before the customer's latest message — use them to resolve references \
+like "yes add 1" or "the chocolate one" (e.g. if you just told the \
+customer the price of the Chocolate Jar Cake and they reply "yes add 1", \
+that means cart_add, cart_item_name="Chocolate Jar Cake", \
+cart_quantity=1). Given the latest customer message (using the prior \
+turns only for context), classify intent and extract entities. Respond \
+with strict JSON only, no prose, matching this schema:
 
 {{
   "intent": "menu_query" | "feedback" | "cart_add" | "cart_remove" | \
@@ -79,6 +84,20 @@ result. There is no Cash on Delivery — politely refuse if asked.
 order if the tool result says validation succeeded. If it failed, \
 apologize and ask them to retry — never claim the order is placed \
 until payment is validated.
+- CRITICAL: never state that an item was added/removed/updated, that \
+the cart was cleared, or that checkout/payment succeeded unless the \
+tool result THIS TURN explicitly confirms it. If there is no tool \
+result, or it reports a failure, do not describe any cart/order state \
+as having changed — only describe what actually happened.
+- If the tool result starts with "NO_MATCH", the item isn't on the \
+menu — say so and ask the customer to check the menu or rephrase. \
+Never say it was added.
+- If the tool result starts with "AMBIGUOUS", list the matching items \
+it gives you and ask the customer which one they meant.
+- If the tool result is "NO_ITEM_SPECIFIED", ask which item they'd \
+like — don't guess.
+- If the tool result is "EMPTY_CART", say the cart is empty and invite \
+them to add items.
 - If the customer wants a custom cake (custom design/message/size), tell \
 them to call {settings.custom_cake_phone_number}.
 - If the customer wants a bulk or large corporate order, tell them to \

@@ -36,7 +36,7 @@ class _ScriptedNLUService:
     def __init__(self, results: list[NLUResult]) -> None:
         self._results = list(results)
 
-    async def classify(self, message, business_config) -> NLUResult:
+    async def classify(self, message, business_config, history=None) -> NLUResult:
         return self._results.pop(0)
 
 

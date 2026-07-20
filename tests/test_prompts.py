@@ -44,3 +44,10 @@ def test_prompt_appends_extra_instructions_when_present():
 def test_prompt_omits_extra_instructions_section_when_absent():
     prompt = build_reply_system_prompt(get_settings(), _business_config())
     assert "Additional instructions from the business owner" not in prompt
+
+
+def test_prompt_forbids_claiming_cart_success_without_tool_result():
+    prompt = build_reply_system_prompt(get_settings(), _business_config())
+    assert "NO_MATCH" in prompt
+    assert "AMBIGUOUS" in prompt
+    assert "do not describe any cart/order state" in prompt

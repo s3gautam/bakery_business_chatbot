@@ -63,12 +63,22 @@ class NLUService:
     def __init__(self, llm_service: LLMService) -> None:
         self._llm_service = llm_service
 
-    async def classify(self, message: str, business_config: BusinessConfig) -> NLUResult:
+    async def classify(
+        self,
+        message: str,
+        business_config: BusinessConfig,
+        history: list[dict[str, str]] | None = None,
+    ) -> NLUResult:
+        messages = [{"role": "system", "content": build_nlu_system_prompt(business_config)}]
+        for turn in (history or [])[-6:]:
+            role = turn.get("role")
+            content = turn.get("content")
+            if role in ("user", "assistant") and content:
+                messages.append({"role": role, "content": content})
+        messages.append({"role": "user", "content": message})
+
         raw = await self._llm_service.complete(
-            messages=[
-                {"role": "system", "content": build_nlu_system_prompt(business_config)},
-                {"role": "user", "content": message},
-            ],
+            messages=messages,
             temperature=0.0,
             max_tokens=400,
         )
