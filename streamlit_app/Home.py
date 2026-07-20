@@ -66,3 +66,7 @@ with st.sidebar:
         st.session_state.conversation_id = str(uuid.uuid4())
         st.session_state.messages = []
         st.rerun()
+
+    st.divider()
+    st.page_link("pages/2_🍰_Menu.py", label="View full menu", icon="🍰")
+    st.page_link("pages/1_⚙️_Configure.py", label="Configure", icon="⚙️")
