@@ -39,6 +39,6 @@ def build_agent():
             email_service, settings.feedback_email_to, business_config.business_name
         ),
         cart_tool=CartTool(menu_store),
-        payment_tool=PaymentTool(llm_service),
+        payment_tool=PaymentTool(llm_service, settings),
     )
     return build_graph(deps)

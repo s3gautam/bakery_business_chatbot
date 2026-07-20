@@ -14,18 +14,18 @@ from app.store.models import BusinessConfig, MenuItem
 
 
 class _StubLLMService:
-    """Text completion always succeeds trivially; only used by
-    generate_reply and language detection fallback in these tests.
+    """Text completion always succeeds trivially, except for the
+    payment-extraction call (identified by its prompt), which returns a
+    fixed valid payment JSON payload.
     """
 
     async def complete(self, messages, **kwargs) -> str:
+        if any("OCR text" in m.get("content", "") for m in messages):
+            return (
+                '{"receiver_name": "Test Bakery", "receiver_phone_or_upi": '
+                '"7000000000", "amount": 500, "status": "success"}'
+            )
         return "OK"
-
-    async def complete_with_image(self, *args, **kwargs) -> str:
-        return (
-            '{"receiver_name": "Test Bakery", "receiver_phone_or_upi": '
-            '"7000000000", "amount": 500, "status": "success"}'
-        )
 
 
 class _ScriptedNLUService:
@@ -94,7 +94,7 @@ def _build(tmp_path, nlu_results: list[NLUResult]):
             email_service=None, admin_email="a@b.com", business_name="Test Bakery"
         ),
         cart_tool=CartTool(menu_store),
-        payment_tool=PaymentTool(llm_service),
+        payment_tool=PaymentTool(llm_service, settings, ocr_extract=lambda _: "some OCR text"),
     )
     return build_graph(deps)
 
