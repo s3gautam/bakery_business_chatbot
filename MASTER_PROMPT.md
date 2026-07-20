@@ -400,7 +400,7 @@ After successful payment
 
 Generate Order ID
 
-Save order.
+No database — the confirmation email below is the order record.
 
 Send email
 

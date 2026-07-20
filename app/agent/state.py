@@ -31,11 +31,11 @@ class AgentState(TypedDict, total=False):
     payment_image_b64: str | None
     payment_image_mime_type: str | None
     detected_language: str
-    intent: Intent
+    intent: Intent | None
     history: list[dict[str, str]]
     tool_result: str | None
-    reply: str
-    nlu_result: Any  # app.agent.nlu.NLUResult (avoids a circular import)
+    reply: str | None
+    nlu_result: Any  # app.agent.nlu.NLUResult | None (avoids a circular import)
 
     # Persisted across turns within a conversation (no database — see
     # streamlit_app/Home.py, which carries these keys in st.session_state).

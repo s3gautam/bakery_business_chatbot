@@ -5,6 +5,7 @@ from app.agent.nlu import NLUResult
 from app.agent.tools.cart_tool import CartTool
 from app.agent.tools.feedback_tool import FeedbackTool
 from app.agent.tools.menu_tool import MenuTool
+from app.agent.tools.order_confirmation_tool import OrderConfirmationTool
 from app.agent.tools.payment_tool import PaymentTool
 from app.config import get_settings
 from app.services.business_hours import BusinessHoursService
@@ -26,6 +27,14 @@ class _StubLLMService:
                 '"7000000000", "amount": 500, "status": "success"}'
             )
         return "OK"
+
+
+class _RecordingEmailService:
+    def __init__(self) -> None:
+        self.sent: list[tuple[str, str, str]] = []
+
+    async def send(self, to_address: str, subject: str, body: str) -> None:
+        self.sent.append((to_address, subject, body))
 
 
 class _ScriptedNLUService:
@@ -76,12 +85,13 @@ def _business_config() -> BusinessConfig:
     )
 
 
-def _build(tmp_path, nlu_results: list[NLUResult]):
+def _build(tmp_path, nlu_results: list[NLUResult], email_service=None):
     settings = get_settings().model_copy(update={"menu_file_path": tmp_path / "menu.json"})
     menu_store = MenuStore(settings)
     menu_store.save_all([MenuItem("Chocolate Cake", None, 500.0, "Chocolate", None, True)])
 
     llm_service = _StubLLMService()
+    email_service = email_service or _RecordingEmailService()
     deps = AgentDependencies(
         settings=settings,
         business_config=_business_config(),
@@ -91,10 +101,11 @@ def _build(tmp_path, nlu_results: list[NLUResult]):
         business_hours_service=BusinessHoursService(settings),
         menu_tool=MenuTool(menu_store),
         feedback_tool=FeedbackTool(
-            email_service=None, admin_email="a@b.com", business_name="Test Bakery"
+            email_service=email_service, admin_email="a@b.com", business_name="Test Bakery"
         ),
         cart_tool=CartTool(menu_store),
         payment_tool=PaymentTool(llm_service, settings, ocr_extract=lambda _: "some OCR text"),
+        order_confirmation_tool=OrderConfirmationTool(email_service, "admin@test.com"),
     )
     return build_graph(deps)
 
@@ -168,7 +179,8 @@ async def test_full_flow_reaches_payment_ready_state(tmp_path):
 
 @pytest.mark.asyncio
 async def test_payment_screenshot_validates_and_generates_order_id(tmp_path):
-    graph = _build(tmp_path, [])
+    email_service = _RecordingEmailService()
+    graph = _build(tmp_path, [], email_service=email_service)
     cart = [{"name": "Chocolate Cake", "unit_price": 500.0, "quantity": 1}]
     result = await graph.ainvoke(
         {
@@ -178,7 +190,7 @@ async def test_payment_screenshot_validates_and_generates_order_id(tmp_path):
             "customer_details": {
                 "name": "Asha",
                 "phone": "9999999999",
-                "email": "a@b.com",
+                "email": "asha@example.com",
                 "address": "123 Main St",
             },
             "delivery_slot": "2PM-3PM",
@@ -190,6 +202,15 @@ async def test_payment_screenshot_validates_and_generates_order_id(tmp_path):
     assert result["cart"] == []
     assert "confirmed" in result["reply"].lower()
     assert result["order_id"] in result["reply"]
+
+    # Order confirmation email sent to both admin and customer
+    recipients = [to for to, _, _ in email_service.sent]
+    assert "admin@test.com" in recipients
+    assert "asha@example.com" in recipients
+    for _, subject, body in email_service.sent:
+        assert result["order_id"] in subject
+        assert "Chocolate Cake" in body
+        assert "123 Main St" in body
 
 
 @pytest.mark.asyncio

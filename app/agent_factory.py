@@ -3,6 +3,7 @@ from app.agent.nlu import NLUService
 from app.agent.tools.cart_tool import CartTool
 from app.agent.tools.feedback_tool import FeedbackTool
 from app.agent.tools.menu_tool import MenuTool
+from app.agent.tools.order_confirmation_tool import OrderConfirmationTool
 from app.agent.tools.payment_tool import PaymentTool
 from app.config import get_settings
 from app.services.business_hours import BusinessHoursService
@@ -40,5 +41,8 @@ def build_agent():
         ),
         cart_tool=CartTool(menu_store),
         payment_tool=PaymentTool(llm_service, settings),
+        order_confirmation_tool=OrderConfirmationTool(
+            email_service, settings.feedback_email_to
+        ),
     )
     return build_graph(deps)

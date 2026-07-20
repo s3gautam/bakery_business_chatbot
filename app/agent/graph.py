@@ -10,6 +10,7 @@ from app.agent.state import AgentState, CustomerDetails
 from app.agent.tools.cart_tool import CartTool, compute_totals, format_cart
 from app.agent.tools.feedback_tool import FeedbackExtraction, FeedbackTool
 from app.agent.tools.menu_tool import MenuTool
+from app.agent.tools.order_confirmation_tool import OrderConfirmationTool
 from app.agent.tools.order_tool import generate_order_id
 from app.agent.tools.payment_tool import PaymentTool
 from app.config import Settings
@@ -69,6 +70,7 @@ class AgentDependencies:
     feedback_tool: FeedbackTool
     cart_tool: CartTool
     payment_tool: PaymentTool
+    order_confirmation_tool: OrderConfirmationTool
 
 
 def _missing_customer_fields(customer_details: CustomerDetails) -> list[str]:
@@ -111,7 +113,17 @@ def build_graph(deps: AgentDependencies):
 
     async def detect_language(state: AgentState) -> AgentState:
         language = await deps.language_service.detect(state["user_message"])
-        return {"detected_language": language}
+        # Defensively clear per-turn fields in case a caller passed in a
+        # previous turn's full result (only cart/customer_details/
+        # delivery_slot/payment_status/order_id are meant to carry over
+        # between turns — see streamlit_app/Home.py's _PERSISTENT_KEYS).
+        return {
+            "detected_language": language,
+            "reply": None,
+            "tool_result": None,
+            "intent": None,
+            "nlu_result": None,
+        }
 
     async def classify_intent(state: AgentState) -> AgentState:
         result = await deps.nlu_service.classify(
@@ -264,16 +276,26 @@ def build_graph(deps: AgentDependencies):
             }
 
         cart = state.get("cart", [])
+        customer_details = state.get("customer_details", {})
+        delivery_slot = state.get("delivery_slot")
         order_id = generate_order_id(deps.business_config.business_name)
         totals = compute_totals(cart, deps.business_config)
         summary = (
             "PAYMENT_VALIDATED\n"
             f"Order ID: {order_id}\n"
             f"{format_cart(cart, deps.business_config)}\n"
-            f"Delivery slot: {state.get('delivery_slot')}\n"
-            f"Delivery address: {state.get('customer_details', {}).get('address')}\n"
+            f"Delivery slot: {delivery_slot}\n"
+            f"Delivery address: {customer_details.get('address')}\n"
             f"Total paid: Rs. {totals.total}"
         )
+
+        try:
+            await deps.order_confirmation_tool.send(
+                order_id, cart, customer_details, delivery_slot, deps.business_config
+            )
+        except Exception:
+            pass  # order is still valid — email delivery is best-effort (see tool docstring)
+
         return {
             "tool_result": summary,
             "payment_status": "validated",
