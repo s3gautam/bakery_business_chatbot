@@ -1,9 +1,13 @@
+import asyncio
+import sys
 import uuid
+from pathlib import Path
 
-import httpx
 import streamlit as st
 
-from api_client import send_chat_message
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from app.agent_factory import build_agent  # noqa: E402
 
 st.set_page_config(page_title="WarmOven Assistant", page_icon="🍰", layout="centered")
 
@@ -32,14 +36,20 @@ if user_input:
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
             try:
-                result = send_chat_message(
-                    st.session_state.conversation_id, user_input
+                agent = build_agent()
+                result = asyncio.run(
+                    agent.ainvoke(
+                        {
+                            "conversation_id": st.session_state.conversation_id,
+                            "user_message": user_input,
+                        }
+                    )
                 )
                 reply = result["reply"]
-            except httpx.HTTPError as exc:
+            except Exception as exc:
                 reply = (
-                    "Sorry, I'm having trouble reaching the kitchen right now "
-                    f"({exc}). Please try again in a moment."
+                    "Sorry, I'm having trouble reaching the kitchen right now. "
+                    f"Please try again in a moment. ({exc})"
                 )
         st.markdown(reply)
 

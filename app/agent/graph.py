@@ -9,8 +9,8 @@ from app.agent.state import AgentState
 from app.agent.tools.feedback_tool import FeedbackExtraction, FeedbackTool
 from app.agent.tools.menu_tool import MenuTool
 from app.config import Settings
-from app.models.business_config import BusinessConfig
 from app.services.business_hours import BusinessHoursService
+from app.store.models import BusinessConfig
 from app.services.language import LanguageDetectionService
 from app.services.llm import LLMService
 
@@ -109,7 +109,7 @@ def build_graph(deps: AgentDependencies):
         user_content = state["user_message"]
         if state.get("tool_result"):
             user_content = (
-                f"Menu database results:\n{state['tool_result']}\n\n"
+                f"Menu results:\n{state['tool_result']}\n\n"
                 f"Customer message: {state['user_message']}"
             )
 

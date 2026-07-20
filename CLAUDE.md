@@ -30,10 +30,32 @@ added yet. As the project grows, update this file with:
 _To be filled in once the project is initialized (e.g. `npm install`,
 `npm run dev`, `npm test`)._
 
+## Architecture
+
+There is no backend service and no database. It's a single self-contained
+**Streamlit** app (`streamlit_app/`): the LangGraph agent
+(`app/agent/graph.py`) runs in-process and calls Groq directly. This
+keeps the whole thing deployable for free on Streamlit Community Cloud
+alone. Do not reintroduce FastAPI, SQLAlchemy, Postgres, or Redis without
+an explicit decision to do so — this was a deliberate simplification
+(no order/feedback history needs to persist; feedback is emailed instead
+of stored).
+
+- Menu: `data/menu.json`, read/written via `app/store/menu_store.py`
+  (`MenuStore`). The menu scraper (`scraper/swiggy_scraper.py`) writes
+  here; the chatbot only ever reads from here, never scrapes live.
+- Business settings: `data/business_config.json`, read/written via
+  `app/store/config_store.py` (`ConfigStore`).
+- Feedback and (later) order confirmations: emailed via
+  `app/services/email_service.py` (`EmailService`, Gmail SMTP), never
+  written to a database.
+- Chat history: kept only in the Streamlit session (`st.session_state`)
+  — not persisted across sessions/restarts.
+
 ## Configurable Business Settings
 
-The following are **admin-configurable at runtime**, stored in the
-`business_config` table (singleton row, `app/models/business_config.py`),
+The following are **admin-configurable at runtime**, stored in
+`data/business_config.json` (`app/store/models.py::BusinessConfig`),
 never hardcoded:
 
 - Menu source link (Swiggy or Zomato)
@@ -44,11 +66,10 @@ never hardcoded:
 - Payment phone number and UPI ID
 - Freeform extra instructions appended to the assistant's system prompt
 
-They're read/written via `GET|PUT /config` (`app/api/routes/config.py`,
-`app/repositories/config_repository.py`) and edited through the
-Streamlit **Configure** page (`streamlit_app/pages/1_⚙️_Configure.py`).
-The menu scraper and the agent's system prompt both pull from this table
-— do not reintroduce hardcoded copies of these values elsewhere.
+They're read/written via `ConfigStore` and edited through the Streamlit
+**Configure** page (`streamlit_app/pages/1_⚙️_Configure.py`). The menu
+scraper and the agent's system prompt both pull from this file — do not
+reintroduce hardcoded copies of these values elsewhere.
 
 The `order_phone_number`, `custom_cake_phone_number`, and
 `bulk_order_phone_number` (call-to-order routing) remain env-var-backed
@@ -62,10 +83,11 @@ later stage's scope until the current stage works end-to-end.
 ### Stage 1 — Menu & Feedback Bot (no ordering)
 
 - Chatbot answers menu questions (items, prices, ingredients, flavours,
-  recommendations, eggless/chocolate/fruit cakes, etc.) from the database
+  recommendations, eggless/chocolate/fruit cakes, etc.) from `data/menu.json`
   only — never hallucinate.
 - Chatbot collects customer feedback (Order ID, platform, feedback text)
-  and stores it — no refund/cashback/replacement promises.
+  and emails it to the admin inbox — no refund/cashback/replacement
+  promises, nothing stored in a database.
 - Language auto-detection (English / Hindi / Hinglish).
 - Business-hours-aware messaging.
 - **No cart, no checkout, no payment.** If the customer wants to place an
@@ -84,15 +106,17 @@ later stage's scope until the current stage works end-to-end.
   via OCR + Vision (receiver number/UPI and receiver name — see
   `MASTER_PROMPT.md` for accepted receiver names).
 - On successful validation, the bot confirms the order to the customer
-  (Order ID generated, order saved) — but email confirmation is **not**
-  part of this stage yet.
+  (Order ID generated) — but the confirmation email is **not** part of
+  this stage yet. Nothing is written to a database; order state lives
+  only in the conversation.
 - Custom cake and bulk order routing (call the relevant number) still
   apply — this stage does not build custom-cake or bulk-order checkout.
 
 ### Stage 3 — Order Confirmation Emails
 
-- Adds the Email tool: after payment validation succeeds and the order is
-  confirmed, send confirmation emails (with retry on failure) to:
+- Uses the Email tool (already built in `app/services/email_service.py`
+  for Stage 1 feedback) to send order confirmation emails (with retry on
+  failure) to:
   - the admin inbox (`gsiddhant947@gmail.com`)
   - the customer's email
 - Email contains full order summary per `MASTER_PROMPT.md` (customer
@@ -241,7 +265,7 @@ Platform
 
 Feedback
 
-Save in database.
+Email to admin inbox (no database).
 
 ---
 
@@ -281,7 +305,7 @@ Create Order
 
 Generate Order ID
 
-Store in DB
+Email order details (no database)
 
 ---
 
@@ -391,7 +415,7 @@ Email failures
 
 Payment mismatch
 
-Database failure
+File storage read/write failure
 
 LLM timeout
 

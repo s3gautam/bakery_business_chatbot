@@ -1,6 +1,6 @@
 from app.agent.prompts import build_reply_system_prompt
 from app.config import get_settings
-from app.models.business_config import BusinessConfig
+from app.store.models import BusinessConfig
 
 
 def _business_config(**overrides) -> BusinessConfig:

@@ -1,0 +1,10 @@
+{
+  "menu_source_url": "https://www.swiggy.com/city/gurgaon/warmoven-cake-and-desserts-sector-49-sohna-road-rest1296665",
+  "min_cart_for_free_delivery": 300.0,
+  "free_delivery_radius_km": 7.0,
+  "delivery_time_minutes": 120,
+  "discount_percent": 25.0,
+  "payment_phone_number": "7479219293",
+  "payment_upi_id": "7479219293@paytm",
+  "extra_instructions": null
+}

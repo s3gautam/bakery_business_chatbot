@@ -1,29 +1,34 @@
 from dataclasses import dataclass
 
-from app.models.feedback import FeedbackPlatform
-from app.repositories.feedback_repository import FeedbackRepository
+from app.services.email_service import EmailService
 
 APOLOGY_MESSAGE = "We're really sorry about your experience."
 ESCALATION_MESSAGE = (
     "Please also raise this directly with {platform} support so they can "
     "action it on their end — we've logged it on our side too."
 )
+GENERIC_ESCALATION_MESSAGE = (
+    "We've passed this on to our team so they can look into it."
+)
 
 
 @dataclass(frozen=True)
 class FeedbackExtraction:
     order_id: str | None
-    platform: FeedbackPlatform | None
+    platform: str | None  # "swiggy" | "zomato" | "other"
     message: str | None
 
 
 class FeedbackTool:
-    """Agent tool: collects and stores customer feedback. Never promises
-    refunds, cashback, or replacement, and never blames the customer.
+    """Agent tool: collects customer feedback and emails it to the
+    admin inbox (there is no database — email is the durable record).
+    Never promises refunds, cashback, or replacement, and never blames
+    the customer.
     """
 
-    def __init__(self, repository: FeedbackRepository) -> None:
-        self._repository = repository
+    def __init__(self, email_service: EmailService, admin_email: str) -> None:
+        self._email_service = email_service
+        self._admin_email = admin_email
 
     def missing_fields(self, extraction: FeedbackExtraction) -> list[str]:
         missing = []
@@ -43,12 +48,18 @@ class FeedbackTool:
         assert extraction.platform is not None
         assert extraction.message is not None
 
-        await self._repository.create(
-            conversation_id=conversation_id,
-            platform=extraction.platform,
-            message=extraction.message,
-            order_id=extraction.order_id,
+        subject = f"WarmOven feedback — Order {extraction.order_id}"
+        body = (
+            f"Conversation ID: {conversation_id}\n"
+            f"Order ID: {extraction.order_id}\n"
+            f"Platform: {extraction.platform}\n\n"
+            f"Feedback:\n{extraction.message}\n"
         )
 
-        platform_label = extraction.platform.value.capitalize()
-        return f"{APOLOGY_MESSAGE} {ESCALATION_MESSAGE.format(platform=platform_label)}"
+        try:
+            await self._email_service.send(self._admin_email, subject, body)
+            escalation = ESCALATION_MESSAGE.format(platform=extraction.platform.capitalize())
+        except Exception:
+            escalation = GENERIC_ESCALATION_MESSAGE
+
+        return f"{APOLOGY_MESSAGE} {escalation}"

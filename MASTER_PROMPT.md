@@ -11,21 +11,16 @@ Build it as if it will be deployed for real customers.
 
 # Tech Stack
 
-Backend
+No separate backend, no database. A single self-contained app:
+
 - Python 3.13
-- FastAPI
-- LangGraph
-- OpenAI compatible LLM
-- PostgreSQL
-- Redis
-- Docker
+- Streamlit (UI + app runtime, deployable free on Streamlit Community Cloud)
+- LangGraph (in-process agent)
+- OpenAI compatible LLM (Groq)
 
-Frontend
-
-- NextJS
-or
-
-- Streamlit (if MVP)
+No cart/feedback/order data is persisted to a database — feedback and
+order details are emailed instead (see Email below). Menu and business
+settings live in JSON files, editable through the Configure page.
 
 Email
 
@@ -109,11 +104,11 @@ Store
 
 Design scraper so it can be rerun anytime.
 
-Store results in database.
+Store results in a menu file (data/menu.json).
 
 The chatbot should never scrape during conversations.
 
-It should only query database.
+It should only read from the menu file.
 
 ---
 
@@ -239,7 +234,7 @@ Collect
 
 feedback
 
-Store in database.
+Email it to the admin inbox (no database).
 
 Politely respond
 
@@ -499,39 +494,27 @@ Intent
 
 ---
 
-# Database
+# Storage
 
-Tables
+No database. Files only.
 
-menu_items
+data/menu.json — menu items (written by the scraper, read by the chatbot)
 
-orders
+data/business_config.json — admin-configurable settings
 
-order_items
+Feedback and order confirmations are emailed, not stored.
 
-customers
-
-feedback
-
-chat_history
-
-payments
+Chat history lives only in the Streamlit session (not persisted).
 
 ---
 
-# APIs
+# App Structure
 
-POST /chat
+Single Streamlit app (streamlit_app/), no separate API layer.
 
-POST /upload-payment
+Home page — chat
 
-GET /menu
-
-POST /order
-
-POST /feedback
-
-GET /health
+Configure page — admin settings
 
 ---
 
@@ -539,15 +522,11 @@ GET /health
 
 Complete production-ready project
 
-Docker
-
 README
 
 .env.example
 
 Requirements
-
-Database migrations
 
 Unit Tests
 

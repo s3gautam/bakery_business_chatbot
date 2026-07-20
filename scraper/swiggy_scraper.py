@@ -3,10 +3,10 @@
 Usage:
     python -m scraper.swiggy_scraper
 
-The menu source link is admin-configurable (see the Configure page /
-`GET|PUT /config`, `BusinessConfig.menu_source_url`) — this module reads
-it from the database rather than a hardcoded URL, and picks a parser
-based on the domain.
+The menu source link is admin-configurable (see the Configure page,
+`BusinessConfig.menu_source_url` in `data/business_config.json`) — this
+module reads it from that file rather than a hardcoded URL, and picks a
+parser based on the domain.
 
 Both Swiggy and Zomato render their restaurant pages client-side and
 embed the menu as a JSON blob inside a <script> tag — there's no stable
@@ -18,8 +18,8 @@ changes their page. Adjust `_iter_raw_menu_entries` / `_STATE_SCRIPT_PATTERNS`
 if the site structure changes.
 
 This scraper never runs during a chat conversation — see
-`app.repositories.menu_repository.MenuRepository`, which is the only
-thing the chatbot itself queries.
+`app.store.menu_store.MenuStore`, which is the only thing the chatbot
+itself queries.
 """
 
 import asyncio
@@ -30,11 +30,11 @@ from urllib.parse import urlparse
 
 import structlog
 
-from app.db.session import async_session_factory
-from app.repositories.config_repository import ConfigRepository
-from app.repositories.menu_repository import MenuRepository
 from app.config import get_settings
 from app.ssl_utils import build_async_httpx_client
+from app.store.config_store import ConfigStore
+from app.store.menu_store import MenuStore
+from app.store.models import MenuItem
 
 logger = structlog.get_logger(__name__)
 
@@ -121,7 +121,6 @@ def extract_items_from_page(html: str, platform: str) -> list[dict]:
         image_id = entry.get("imageId")
         items.append(
             {
-                "source_id": str(entry.get("id") or entry.get("itemId") or entry["name"]),
                 "name": entry["name"],
                 "description": entry.get("description") or None,
                 "price": round(float(raw_price) / price_divisor, 2),
@@ -131,6 +130,7 @@ def extract_items_from_page(html: str, platform: str) -> list[dict]:
                     else entry.get("imageUrl")
                 ),
                 "category": entry.get("category") or None,
+                "is_available": True,
             }
         )
     return items
@@ -150,31 +150,19 @@ async def fetch_menu_html(url: str) -> str:
 
 
 async def sync_menu() -> int:
-    async with async_session_factory() as session:
-        config_repository = ConfigRepository(session)
-        business_config = await config_repository.get()
-        menu_url = business_config.menu_source_url
-        await session.commit()
+    settings = get_settings()
+    config_store = ConfigStore(settings)
+    menu_store = MenuStore(settings)
 
+    menu_url = config_store.load().menu_source_url
     platform = detect_platform(menu_url)
     html = await fetch_menu_html(menu_url)
-    items = extract_items_from_page(html, platform)
+    raw_items = extract_items_from_page(html, platform)
 
-    async with async_session_factory() as session:
-        repository = MenuRepository(session)
-        for item in items:
-            await repository.upsert_from_scrape(
-                source_id=item["source_id"],
-                name=item["name"],
-                description=item["description"],
-                price=item["price"],
-                image_url=item["image_url"],
-                category=item["category"],
-            )
-        await session.commit()
+    menu_store.save_all([MenuItem(**item) for item in raw_items])
 
-    logger.info("menu_sync_complete", item_count=len(items), platform=platform)
-    return len(items)
+    logger.info("menu_sync_complete", item_count=len(raw_items), platform=platform)
+    return len(raw_items)
 
 
 def main() -> None:

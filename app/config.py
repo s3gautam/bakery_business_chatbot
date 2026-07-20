@@ -1,6 +1,9 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 class Settings(BaseSettings):
@@ -13,14 +16,21 @@ class Settings(BaseSettings):
     groq_base_url: str = "https://api.groq.com/openai/v1"
     groq_model: str = "llama-3.3-70b-versatile"
 
-    database_url: str
-    redis_url: str = "redis://localhost:6379/0"
-
     order_phone_number: str = "7015943285"
     custom_cake_phone_number: str = "7015943285"
     bulk_order_phone_number: str = "7777777777"
 
     business_hours: tuple[tuple[int, int], ...] = ((0, 5), (9, 12))
+
+    menu_file_path: Path = REPO_ROOT / "data" / "menu.json"
+    business_config_file_path: Path = REPO_ROOT / "data" / "business_config.json"
+
+    # SMTP (Gmail) — used to email feedback instead of storing it.
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    feedback_email_to: str = "gsiddhant947@gmail.com"
 
     requests_ca_bundle: str | None = None
     dev_disable_ssl_verify: bool = False
@@ -28,6 +38,10 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.app_env.lower() == "production"
+
+    @property
+    def email_configured(self) -> bool:
+        return bool(self.smtp_username and self.smtp_password)
 
 
 @lru_cache

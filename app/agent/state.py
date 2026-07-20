@@ -1,7 +1,4 @@
-from typing import TYPE_CHECKING, Literal, TypedDict
-
-if TYPE_CHECKING:
-    from app.agent.nlu import NLUResult
+from typing import Any, Literal, TypedDict
 
 Intent = Literal[
     "menu_query",
@@ -21,4 +18,4 @@ class AgentState(TypedDict, total=False):
     history: list[dict[str, str]]
     tool_result: str | None
     reply: str
-    nlu_result: "NLUResult"
+    nlu_result: Any  # app.agent.nlu.NLUResult (avoids a circular import)

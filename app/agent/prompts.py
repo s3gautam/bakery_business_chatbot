@@ -1,5 +1,5 @@
 from app.config import Settings
-from app.models.business_config import BusinessConfig
+from app.store.models import BusinessConfig
 
 NLU_SYSTEM_PROMPT = """You are the NLU layer for WarmOven Cakes & Desserts' \
 customer chatbot. Given the latest customer message, classify intent and \

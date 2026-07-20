@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Chocolate Truffle Cake",
+    "description": "Rich chocolate sponge with truffle ganache",
+    "price": 599.0,
+    "category": "Chocolate",
+    "image_url": null,
+    "is_available": true
+  },
+  {
+    "name": "Red Velvet Cake",
+    "description": "Classic red velvet with cream cheese frosting",
+    "price": 649.0,
+    "category": "Signature",
+    "image_url": null,
+    "is_available": true
+  },
+  {
+    "name": "Eggless Black Forest",
+    "description": "Eggless black forest with cherries",
+    "price": 549.0,
+    "category": "Eggless",
+    "image_url": null,
+    "is_available": true
+  }
+]

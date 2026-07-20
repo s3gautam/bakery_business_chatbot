@@ -3,7 +3,6 @@ from dataclasses import dataclass
 
 from app.agent.prompts import NLU_SYSTEM_PROMPT
 from app.agent.state import Intent
-from app.models.feedback import FeedbackPlatform
 from app.services.llm import LLMService
 
 _VALID_INTENTS = {
@@ -15,23 +14,23 @@ _VALID_INTENTS = {
     "general",
 }
 
+_VALID_PLATFORMS = {"swiggy", "zomato", "other"}
+
 
 @dataclass(frozen=True)
 class NLUResult:
     intent: Intent
     search_query: str | None
     order_id: str | None
-    platform: FeedbackPlatform | None
+    platform: str | None
     feedback_message: str | None
 
 
-def _safe_platform(raw: object) -> FeedbackPlatform | None:
+def _safe_platform(raw: object) -> str | None:
     if not isinstance(raw, str):
         return None
-    try:
-        return FeedbackPlatform(raw.lower())
-    except ValueError:
-        return None
+    label = raw.lower()
+    return label if label in _VALID_PLATFORMS else None
 
 
 class NLUService:

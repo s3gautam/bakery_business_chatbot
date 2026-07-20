@@ -1,5 +1,5 @@
-from app.models.menu_item import MenuItem
-from app.repositories.menu_repository import MenuRepository
+from app.store.menu_store import MenuStore
+from app.store.models import MenuItem
 
 
 def format_menu_items(items: list[MenuItem]) -> str:
@@ -18,15 +18,15 @@ def format_menu_items(items: list[MenuItem]) -> str:
 
 
 class MenuTool:
-    """Agent tool: searches the menu database only. Never scrapes and
-    never returns items not present in the database.
+    """Agent tool: searches the menu file only. Never scrapes and never
+    returns items not present in `data/menu.json`.
     """
 
-    def __init__(self, repository: MenuRepository) -> None:
-        self._repository = repository
+    def __init__(self, store: MenuStore) -> None:
+        self._store = store
 
     async def search(self, query: str) -> str:
-        items = await self._repository.search(query) if query.strip() else []
+        items = self._store.search(query) if query.strip() else []
         if not items:
-            items = await self._repository.list_available()
+            items = self._store.load_available()
         return format_menu_items(items[:15])
