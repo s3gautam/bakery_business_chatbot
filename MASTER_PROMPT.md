@@ -93,7 +93,7 @@ The assistant should automatically detect the language.
 
 Scrape menu from
 
-https://www.swiggy.com/city/gurgaon/warmoven-cake-and-desserts-sector-49-sohna-road-rest1296665
+https://www.swiggy.com/city/gurgaon/the-dessert-zone-omaxe-mall-new-sohna-road-rest624899
 
 Store
 

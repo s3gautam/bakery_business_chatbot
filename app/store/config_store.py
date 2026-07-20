@@ -8,7 +8,7 @@ from app.store.models import BusinessConfig
 _DEFAULTS = BusinessConfig(
     menu_source_url=(
         "https://www.swiggy.com/city/gurgaon/"
-        "warmoven-cake-and-desserts-sector-49-sohna-road-rest1296665"
+        "the-dessert-zone-omaxe-mall-new-sohna-road-rest624899"
     ),
     min_cart_for_free_delivery=300.0,
     free_delivery_radius_km=7.0,
