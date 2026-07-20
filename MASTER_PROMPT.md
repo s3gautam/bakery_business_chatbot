@@ -48,11 +48,11 @@ WarmOven Cakes & Desserts
 
 Business timings
 
-12 AM – 5 AM
+Closed 5 AM – 9 AM
 
-9 AM – 12 PM
+Open the rest of the day
 
-Outside these timings,
+During the closed window,
 
 Bot should politely say
 
@@ -136,9 +136,9 @@ Minimum Cart
 
 Business timings
 
-12AM-5AM
+Closed 5AM-9AM
 
-9AM-12PM
+Open the rest of the day
 
 ---
 

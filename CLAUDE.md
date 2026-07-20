@@ -368,9 +368,9 @@ Never invent availability.
 
 Business Hours
 
-12AM-5AM
+Closed 5AM-9AM
 
-9AM-12PM
+Open the rest of the day (9AM-5AM next day)
 
 Delivery
 

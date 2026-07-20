@@ -24,7 +24,9 @@ class Settings(BaseSettings):
     custom_cake_phone_number: str = "7015943285"
     bulk_order_phone_number: str = "7777777777"
 
-    business_hours: tuple[tuple[int, int], ...] = ((0, 5), (9, 12))
+    # Hours the business is CLOSED (as (start_hour, end_hour) 24h tuples).
+    # Default: closed 5AM-9AM, open the other 20 hours of the day.
+    business_closed_hours: tuple[tuple[int, int], ...] = ((5, 9),)
 
     menu_file_path: Path = REPO_ROOT / "data" / "menu.json"
     business_config_file_path: Path = REPO_ROOT / "data" / "business_config.json"

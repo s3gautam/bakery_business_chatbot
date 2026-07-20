@@ -10,10 +10,10 @@ OFFLINE_MESSAGE = (
 
 class BusinessHoursService:
     def __init__(self, settings: Settings) -> None:
-        self._windows: tuple[tuple[time, time], ...] = tuple(
-            (time(hour=start), time(hour=end)) for start, end in settings.business_hours
+        self._closed_windows: tuple[tuple[time, time], ...] = tuple(
+            (time(hour=start), time(hour=end)) for start, end in settings.business_closed_hours
         )
 
     def is_open(self, at: datetime) -> bool:
         current = at.time()
-        return any(start <= current < end for start, end in self._windows)
+        return not any(start <= current < end for start, end in self._closed_windows)
