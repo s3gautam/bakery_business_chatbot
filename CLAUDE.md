@@ -30,6 +30,42 @@ added yet. As the project grows, update this file with:
 _To be filled in once the project is initialized (e.g. `npm install`,
 `npm run dev`, `npm test`)._
 
+## LLM Provider
+
+- The LLM provider is **Groq** (OpenAI-compatible API).
+- The Groq API key is supplied via the `GROQ_API_KEY` environment variable —
+  never hardcode it, never commit it. Document it in `.env.example` as a
+  placeholder only.
+- Point the OpenAI-compatible client at Groq's base URL
+  (`https://api.groq.com/openai/v1`) instead of OpenAI's.
+
+## Local Dev Environment: Corporate SSL Interception
+
+- Development happens on a company laptop that sits behind a corporate
+  proxy performing SSL/TLS interception (MITM inspection). This means
+  outbound HTTPS requests (Groq API, Google Maps API, SMTP, package
+  installs, etc.) can fail certificate verification locally even though
+  the requests are legitimate.
+- When you hit SSL/TLS verification errors in **local development only**,
+  it's acceptable to work around them by one of these methods, in order
+  of preference:
+  1. **Preferred**: point the HTTP client at the corporate root CA bundle
+     (e.g. `REQUESTS_CA_BUNDLE` / `SSL_CERT_FILE` env vars, or passing
+     `verify=<path-to-corp-ca.pem>` to `httpx`/`requests` clients) if the
+     CA cert is available on the machine.
+  2. **Fallback**: if the CA bundle isn't available, disable certificate
+     verification only for local development, gated behind an explicit
+     environment flag (e.g. `DEV_DISABLE_SSL_VERIFY=true`), never as the
+     default behavior.
+- This SSL bypass must **never** apply in staging or production. Any code
+  that disables verification must be conditional on an explicit local-dev
+  flag, must log a visible warning when active, and must be excluded from
+  production config/deployment (Docker/CI configs should not set the
+  bypass flag).
+- Do not silence SSL warnings globally (e.g. no blanket
+  `urllib3.disable_warnings()` at import time) — scope any suppression to
+  the specific dev-only client instantiation.
+
 ---
 
 # Claude Development Instructions
