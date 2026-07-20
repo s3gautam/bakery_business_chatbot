@@ -53,7 +53,10 @@ fallback set `DEV_DISABLE_SSL_VERIFY=true` in `.env`.
   - payment phone number and UPI ID
   - accepted receiver names on payment screenshots
   - freeform extra instructions for the assistant
-- **🍰 Menu** — view the current menu and re-sync it from Swiggy/Zomato.
+- **🍰 Menu** — view the current menu, re-sync it from Swiggy/Zomato, or
+  add/edit/delete items directly in an editable table (each row is a
+  menu item; use the bottom row to add one, select a row and press
+  Delete to remove it). Click **Save menu changes** to persist.
 
 These settings live in `data/business_config.json`.
 

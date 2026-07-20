@@ -10,6 +10,7 @@ python-dotenv==1.0.1
 structlog==24.4.0
 pytesseract==0.3.13
 pillow>=10.0,<12
+pandas>=2.0,<3
 
 pytest==8.3.4
 pytest-asyncio==0.25.0
