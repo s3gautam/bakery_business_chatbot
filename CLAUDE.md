@@ -145,6 +145,25 @@ later stage's scope until the current stage works end-to-end.
 - This is the stage where the full ordering flow described in
   `MASTER_PROMPT.md` becomes complete end-to-end.
 
+### Abandoned Cart Reminder
+
+- `app/agent/tools/abandoned_cart_tool.py` emails the customer once if
+  their cart has sat untouched for 3 minutes (checkout not completed)
+  and they've given an email — "you left items in your cart, call
+  {payment_phone_number} to complete your order." Same discipline as
+  the other email/reply tools: pure-function content, no LLM involved.
+- **Architectural caveat**: this app has no database and no background
+  job scheduler (deliberate, for free single-service Streamlit Cloud
+  hosting — see Architecture above). This reminder can therefore only
+  fire while the customer's browser tab stays open on the page —
+  `streamlit_app/Home.py` polls elapsed time via `st.fragment(run_every
+  =20)` and fires once the 3-minute threshold crosses, tracked in
+  `st.session_state` (`cart_updated_at`, `cart_reminder_sent`). It
+  cannot reach a customer who has closed the tab. A true "always fires
+  later" version needs persisted cart state plus a server-side
+  scheduler (e.g. Celery/cron), which is out of scope for this
+  architecture unless that's deliberately revisited.
+
 ## LLM Provider
 
 - The LLM provider is **Groq** (OpenAI-compatible API).

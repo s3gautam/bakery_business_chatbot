@@ -92,6 +92,20 @@ built purely in code, not by an LLM. If email delivery fails, it's
 logged but doesn't affect the order — payment already succeeded by
 that point.
 
+## Abandoned Cart Reminder
+
+If a customer has an email on file, items in their cart, and hasn't
+checked out for 3 minutes, they get one reminder email: "you left
+items in your cart — call {payment phone number} to complete your
+order." Content is built in code, not by an LLM, same as everything
+else above.
+
+**Limitation**: this app has no database or background scheduler by
+design (see `CLAUDE.md` > Architecture), so the reminder only fires
+while the customer's browser tab stays open on the page — it polls
+elapsed time client-side (`st.fragment(run_every=20)` in
+`streamlit_app/Home.py`). It can't reach someone who closed the tab.
+
 ## Syncing the menu
 
 The chatbot only ever reads menu data from `data/menu.json` — it never

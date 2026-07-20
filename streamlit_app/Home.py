@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import sys
+import time
 import uuid
 from pathlib import Path
 
@@ -8,9 +9,13 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from app.agent.tools.abandoned_cart_tool import AbandonedCartReminderTool  # noqa: E402
 from app.agent_factory import build_agent  # noqa: E402
 from app.config import get_settings  # noqa: E402
+from app.services.email_service import EmailService  # noqa: E402
 from app.store.config_store import ConfigStore  # noqa: E402
+
+_CART_REMINDER_DELAY_SECONDS = 3 * 60
 
 business_name = ConfigStore(get_settings()).load().business_name
 
@@ -20,20 +25,31 @@ st.set_page_config(page_title=f"{business_name} Assistant", page_icon="🍰", la
 # so this session dict *is* the order state (see CLAUDE.md > Architecture).
 _PERSISTENT_KEYS = ("cart", "customer_details", "delivery_slot", "payment_status", "order_id")
 
-if "conversation_id" not in st.session_state:
-    st.session_state.conversation_id = str(uuid.uuid4())
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-if "order_state" not in st.session_state:
-    st.session_state.order_state = {
+
+def _fresh_order_state() -> dict:
+    return {
         "cart": [],
         "customer_details": {},
         "delivery_slot": None,
         "payment_status": "none",
         "order_id": None,
     }
+
+
+if "conversation_id" not in st.session_state:
+    st.session_state.conversation_id = str(uuid.uuid4())
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+if "order_state" not in st.session_state:
+    st.session_state.order_state = _fresh_order_state()
 if "uploader_key" not in st.session_state:
     st.session_state.uploader_key = 0
+# Abandoned-cart reminder bookkeeping — see abandoned_cart_tool.py's
+# module docstring for the "only fires while the tab stays open" caveat.
+if "cart_updated_at" not in st.session_state:
+    st.session_state.cart_updated_at = None
+if "cart_reminder_sent" not in st.session_state:
+    st.session_state.cart_reminder_sent = False
 
 st.title(f"🍰 {business_name}")
 st.caption(
@@ -60,6 +76,8 @@ if user_input or payment_screenshot:
     st.session_state.messages.append({"role": "user", "content": display_text})
     with st.chat_message("user"):
         st.markdown(display_text)
+
+    previous_cart = st.session_state.order_state.get("cart") or []
 
     turn_state = {
         **st.session_state.order_state,
@@ -93,7 +111,49 @@ if user_input or payment_screenshot:
         st.markdown(reply)
 
     st.session_state.messages.append({"role": "assistant", "content": reply})
+
+    new_cart = st.session_state.order_state.get("cart") or []
+    if new_cart != previous_cart:
+        st.session_state.cart_updated_at = time.time()
+        st.session_state.cart_reminder_sent = False
+    if not new_cart or st.session_state.order_state.get("payment_status") == "validated":
+        st.session_state.cart_updated_at = None
+        st.session_state.cart_reminder_sent = False
+
     st.rerun()
+
+
+@st.fragment(run_every=20)
+def _check_abandoned_cart() -> None:
+    """Polls elapsed time and emails a reminder once the cart has sat
+    untouched for _CART_REMINDER_DELAY_SECONDS. Only runs while this
+    browser tab stays open — see abandoned_cart_tool.py's docstring.
+    """
+    order_state = st.session_state.order_state
+    cart = order_state.get("cart") or []
+    customer_email = order_state.get("customer_details", {}).get("email")
+    updated_at = st.session_state.cart_updated_at
+
+    if (
+        not cart
+        or not customer_email
+        or st.session_state.cart_reminder_sent
+        or order_state.get("payment_status") == "validated"
+        or updated_at is None
+        or time.time() - updated_at < _CART_REMINDER_DELAY_SECONDS
+    ):
+        return
+
+    settings = get_settings()
+    business_config = ConfigStore(settings).load()
+    tool = AbandonedCartReminderTool(EmailService(settings))
+    sent = asyncio.run(tool.send(cart, order_state["customer_details"], business_config))
+    st.session_state.cart_reminder_sent = True
+    if sent:
+        st.toast("Sent a cart reminder email — don't forget to complete your order!")
+
+
+_check_abandoned_cart()
 
 with st.sidebar:
     st.subheader("Your order")
@@ -113,14 +173,10 @@ with st.sidebar:
     if st.button("Start a new conversation"):
         st.session_state.conversation_id = str(uuid.uuid4())
         st.session_state.messages = []
-        st.session_state.order_state = {
-            "cart": [],
-            "customer_details": {},
-            "delivery_slot": None,
-            "payment_status": "none",
-            "order_id": None,
-        }
+        st.session_state.order_state = _fresh_order_state()
         st.session_state.uploader_key += 1
+        st.session_state.cart_updated_at = None
+        st.session_state.cart_reminder_sent = False
         st.rerun()
 
     st.divider()
