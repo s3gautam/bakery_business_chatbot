@@ -33,6 +33,8 @@ def build_agent():
         language_service=LanguageDetectionService(llm_service),
         business_hours_service=BusinessHoursService(settings),
         menu_tool=MenuTool(menu_store),
-        feedback_tool=FeedbackTool(email_service, settings.feedback_email_to),
+        feedback_tool=FeedbackTool(
+            email_service, settings.feedback_email_to, business_config.business_name
+        ),
     )
     return build_graph(deps)

@@ -6,6 +6,7 @@ from app.config import Settings
 from app.store.models import BusinessConfig
 
 _DEFAULTS = BusinessConfig(
+    business_name="The Dessert Zone",
     menu_source_url=(
         "https://www.swiggy.com/city/gurgaon/"
         "the-dessert-zone-omaxe-mall-new-sohna-road-rest624899"

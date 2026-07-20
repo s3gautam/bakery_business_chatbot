@@ -4,7 +4,11 @@ from app.agent.tools.feedback_tool import FeedbackExtraction, FeedbackTool
 
 
 def _tool() -> FeedbackTool:
-    return FeedbackTool(email_service=None, admin_email="admin@example.com")  # type: ignore[arg-type]
+    return FeedbackTool(
+        email_service=None,  # type: ignore[arg-type]
+        admin_email="admin@example.com",
+        business_name="Test Bakery",
+    )
 
 
 def test_missing_fields_reports_all_when_empty():

@@ -8,14 +8,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from app.config import get_settings  # noqa: E402
 from app.store.config_store import ConfigStore  # noqa: E402
 
-st.set_page_config(page_title="Configure — WarmOven", page_icon="⚙️", layout="centered")
-st.title("⚙️ Configure WarmOven Assistant")
-st.caption("Changes apply immediately to the next customer message.")
-
 store = ConfigStore(get_settings())
 config = store.load()
 
+st.set_page_config(
+    page_title=f"Configure — {config.business_name}", page_icon="⚙️", layout="centered"
+)
+st.title(f"⚙️ Configure {config.business_name} Assistant")
+st.caption("Changes apply immediately to the next customer message.")
+
 with st.form("business_config_form"):
+    st.subheader("Business")
+    business_name = st.text_input(
+        "Business name",
+        value=config.business_name,
+        help="Shown to customers in the chat UI and used in the assistant's replies and emails.",
+    )
+
     st.subheader("Menu source")
     menu_source_url = st.text_input(
         "Swiggy or Zomato menu link",
@@ -78,6 +87,7 @@ with st.form("business_config_form"):
 
 if submitted:
     store.update(
+        business_name=business_name,
         menu_source_url=menu_source_url,
         min_cart_for_free_delivery=min_cart_for_free_delivery,
         free_delivery_radius_km=free_delivery_radius_km,

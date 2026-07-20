@@ -13,6 +13,7 @@ class MenuItem:
 
 @dataclass(frozen=True)
 class BusinessConfig:
+    business_name: str
     menu_source_url: str
     min_cart_for_free_delivery: float
     free_delivery_radius_km: float

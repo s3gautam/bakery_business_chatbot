@@ -1,4 +1,4 @@
-"""Rerunnable WarmOven menu scraper (Swiggy or Zomato).
+"""Rerunnable menu scraper (Swiggy or Zomato).
 
 Usage:
     python -m scraper.swiggy_scraper
@@ -143,7 +143,7 @@ async def fetch_menu_html(url: str) -> str:
     ) as client:
         response = await client.get(
             url,
-            headers={"User-Agent": "Mozilla/5.0 (WarmOven menu sync bot)"},
+            headers={"User-Agent": "Mozilla/5.0 (menu sync bot)"},
         )
         response.raise_for_status()
         return response.text

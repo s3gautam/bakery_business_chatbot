@@ -26,9 +26,12 @@ class FeedbackTool:
     the customer.
     """
 
-    def __init__(self, email_service: EmailService, admin_email: str) -> None:
+    def __init__(
+        self, email_service: EmailService, admin_email: str, business_name: str
+    ) -> None:
         self._email_service = email_service
         self._admin_email = admin_email
+        self._business_name = business_name
 
     def missing_fields(self, extraction: FeedbackExtraction) -> list[str]:
         missing = []
@@ -48,7 +51,7 @@ class FeedbackTool:
         assert extraction.platform is not None
         assert extraction.message is not None
 
-        subject = f"WarmOven feedback — Order {extraction.order_id}"
+        subject = f"{self._business_name} feedback — Order {extraction.order_id}"
         body = (
             f"Conversation ID: {conversation_id}\n"
             f"Order ID: {extraction.order_id}\n"

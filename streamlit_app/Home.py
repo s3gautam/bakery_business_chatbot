@@ -8,15 +8,19 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.agent_factory import build_agent  # noqa: E402
+from app.config import get_settings  # noqa: E402
+from app.store.config_store import ConfigStore  # noqa: E402
 
-st.set_page_config(page_title="WarmOven Assistant", page_icon="🍰", layout="centered")
+business_name = ConfigStore(get_settings()).load().business_name
+
+st.set_page_config(page_title=f"{business_name} Assistant", page_icon="🍰", layout="centered")
 
 if "conversation_id" not in st.session_state:
     st.session_state.conversation_id = str(uuid.uuid4())
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-st.title("🍰 WarmOven Cakes & Desserts")
+st.title(f"🍰 {business_name}")
 st.caption(
     "Ask about our menu, flavours, or delivery — or leave feedback on a past order. "
     "Use the **Configure** page in the sidebar to change business settings."

@@ -5,6 +5,7 @@ from app.store.models import BusinessConfig
 
 def _business_config(**overrides) -> BusinessConfig:
     defaults = dict(
+        business_name="Test Bakery",
         menu_source_url="https://www.swiggy.com/x",
         min_cart_for_free_delivery=300.0,
         free_delivery_radius_km=7.0,
@@ -24,6 +25,13 @@ def test_prompt_includes_configured_business_facts():
     assert "7.0 km" in prompt
     assert "120" in prompt
     assert "25.0%" in prompt
+
+
+def test_prompt_includes_business_name():
+    prompt = build_reply_system_prompt(
+        get_settings(), _business_config(business_name="The Dessert Zone")
+    )
+    assert "The Dessert Zone" in prompt
 
 
 def test_prompt_appends_extra_instructions_when_present():

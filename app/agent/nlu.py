@@ -1,9 +1,10 @@
 import json
 from dataclasses import dataclass
 
-from app.agent.prompts import NLU_SYSTEM_PROMPT
+from app.agent.prompts import build_nlu_system_prompt
 from app.agent.state import Intent
 from app.services.llm import LLMService
+from app.store.models import BusinessConfig
 
 _VALID_INTENTS = {
     "menu_query",
@@ -37,10 +38,10 @@ class NLUService:
     def __init__(self, llm_service: LLMService) -> None:
         self._llm_service = llm_service
 
-    async def classify(self, message: str) -> NLUResult:
+    async def classify(self, message: str, business_config: BusinessConfig) -> NLUResult:
         raw = await self._llm_service.complete(
             messages=[
-                {"role": "system", "content": NLU_SYSTEM_PROMPT},
+                {"role": "system", "content": build_nlu_system_prompt(business_config)},
                 {"role": "user", "content": message},
             ],
             temperature=0.0,
