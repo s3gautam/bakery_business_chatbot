@@ -12,7 +12,8 @@ COPY app ./app
 COPY scraper ./scraper
 COPY alembic ./alembic
 COPY alembic.ini .
+COPY streamlit_app ./streamlit_app
 
-EXPOSE 8000
+EXPOSE 8000 8501
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

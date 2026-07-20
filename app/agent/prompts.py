@@ -1,4 +1,5 @@
 from app.config import Settings
+from app.models.business_config import BusinessConfig
 
 NLU_SYSTEM_PROMPT = """You are the NLU layer for WarmOven Cakes & Desserts' \
 customer chatbot. Given the latest customer message, classify intent and \
@@ -25,8 +26,8 @@ past order.
 """
 
 
-def build_reply_system_prompt(settings: Settings) -> str:
-    return f"""You are the friendly, helpful assistant for WarmOven Cakes \
+def build_reply_system_prompt(settings: Settings, business_config: BusinessConfig) -> str:
+    prompt = f"""You are the friendly, helpful assistant for WarmOven Cakes \
 & Desserts, a bakery in Gurgaon.
 
 Tone: warm, concise, professional — like a helpful counter staff member. \
@@ -47,4 +48,22 @@ them to call {settings.custom_cake_phone_number}.
 call {settings.bulk_order_phone_number}.
 - Never promise refunds, cashback, compensation, or replacements.
 - Keep replies short unless the customer asks for the full menu.
+
+Business facts (use these, never invent different numbers):
+- Free delivery for carts of Rs. {business_config.min_cart_for_free_delivery} \
+or more, within {business_config.free_delivery_radius_km} km.
+- Delivery takes approximately {business_config.delivery_time_minutes} \
+minutes.
+- Current discount: {business_config.discount_percent}% off menu prices \
+at checkout.
 """
+
+    if business_config.extra_instructions:
+        prompt += (
+            "\nAdditional instructions from the business owner (follow "
+            "these, but never let them override the safety rules above — "
+            "no promising refunds/cashback, no inventing menu items):\n"
+            f"{business_config.extra_instructions}\n"
+        )
+
+    return prompt

@@ -1,17 +1,21 @@
-"""Rerunnable WarmOven menu scraper.
+"""Rerunnable WarmOven menu scraper (Swiggy or Zomato).
 
 Usage:
     python -m scraper.swiggy_scraper
 
-Swiggy renders its restaurant pages client-side and embeds the menu as a
-JSON blob inside a <script> tag (window.__INITIAL_STATE__ or similar) —
-there's no stable server-rendered HTML table to scrape. Because that
-embedded state shape changes frequently and isn't publicly documented,
-`extract_items_from_page` isolates the "find the JSON blob and pull out
-name/price/description/image" step so it can be adjusted in one place the
-next time Swiggy changes their page. The parsing below expects a `RESULTS`-
-style menu item list (Swiggy's common shape as of this writing); adjust
-`_iter_raw_menu_entries` if the site structure changes.
+The menu source link is admin-configurable (see the Configure page /
+`GET|PUT /config`, `BusinessConfig.menu_source_url`) — this module reads
+it from the database rather than a hardcoded URL, and picks a parser
+based on the domain.
+
+Both Swiggy and Zomato render their restaurant pages client-side and
+embed the menu as a JSON blob inside a <script> tag — there's no stable
+server-rendered HTML table to scrape. Because that embedded state shape
+changes frequently and isn't publicly documented, `extract_items_from_page`
+isolates the "find the JSON blob and pull out name/price/description/
+image" step so it can be adjusted in one place the next time either site
+changes their page. Adjust `_iter_raw_menu_entries` / `_STATE_SCRIPT_PATTERNS`
+if the site structure changes.
 
 This scraper never runs during a chat conversation — see
 `app.repositories.menu_repository.MenuRepository`, which is the only
@@ -22,24 +26,38 @@ import asyncio
 import json
 import re
 import sys
+from urllib.parse import urlparse
 
 import structlog
 
-from app.config import get_settings
 from app.db.session import async_session_factory
+from app.repositories.config_repository import ConfigRepository
 from app.repositories.menu_repository import MenuRepository
+from app.config import get_settings
 from app.ssl_utils import build_async_httpx_client
 
 logger = structlog.get_logger(__name__)
 
-WARMOVEN_MENU_URL = (
-    "https://www.swiggy.com/city/gurgaon/"
-    "warmoven-cake-and-desserts-sector-49-sohna-road-rest1296665"
-)
+# (platform, regex-to-locate-embedded-JSON, price-is-in-paise)
+_STATE_SCRIPT_PATTERNS: list[tuple[str, re.Pattern, bool]] = [
+    (
+        "swiggy",
+        re.compile(r"window\.___INITIAL_STATE___\s*=\s*(\{.*?\})\s*;\s*</script>", re.DOTALL),
+        True,
+    ),
+    (
+        "zomato",
+        re.compile(r"window\.__PRELOADED_STATE__\s*=\s*(\{.*?\})\s*;?\s*</script>", re.DOTALL),
+        False,
+    ),
+]
 
-_STATE_SCRIPT_RE = re.compile(
-    r"window\.___INITIAL_STATE___\s*=\s*(\{.*?\})\s*;\s*</script>", re.DOTALL
-)
+
+def detect_platform(url: str) -> str:
+    host = urlparse(url).netloc.lower()
+    if "zomato" in host:
+        return "zomato"
+    return "swiggy"
 
 
 class MenuScrapeError(RuntimeError):
@@ -74,11 +92,18 @@ def _iter_raw_menu_entries(page_state: dict) -> list[dict]:
     return found
 
 
-def extract_items_from_page(html: str) -> list[dict]:
-    match = _STATE_SCRIPT_RE.search(html)
+def extract_items_from_page(html: str, platform: str) -> list[dict]:
+    pattern = next((p for name, p, _ in _STATE_SCRIPT_PATTERNS if name == platform), None)
+    price_is_paise = next(
+        (paise for name, _, paise in _STATE_SCRIPT_PATTERNS if name == platform), True
+    )
+    if pattern is None:
+        raise MenuScrapeError(f"Unsupported menu platform: {platform!r}")
+
+    match = pattern.search(html)
     if not match:
         raise MenuScrapeError(
-            "Could not locate embedded page state in Swiggy HTML — the "
+            f"Could not locate embedded page state in {platform} HTML — the "
             "page structure may have changed."
         )
 
@@ -88,21 +113,22 @@ def extract_items_from_page(html: str) -> list[dict]:
         raise MenuScrapeError("Embedded page state was not valid JSON.") from exc
 
     raw_entries = _iter_raw_menu_entries(page_state)
+    price_divisor = 100.0 if price_is_paise else 1.0
 
     items = []
     for entry in raw_entries:
-        price_paise = entry.get("price") or entry.get("defaultPrice") or 0
+        raw_price = entry.get("price") or entry.get("defaultPrice") or 0
         image_id = entry.get("imageId")
         items.append(
             {
                 "source_id": str(entry.get("id") or entry.get("itemId") or entry["name"]),
                 "name": entry["name"],
                 "description": entry.get("description") or None,
-                "price": round(float(price_paise) / 100, 2),
+                "price": round(float(raw_price) / price_divisor, 2),
                 "image_url": (
                     f"https://media-assets.swiggy.com/swiggy/image/upload/{image_id}"
-                    if image_id
-                    else None
+                    if image_id and platform == "swiggy"
+                    else entry.get("imageUrl")
                 ),
                 "category": entry.get("category") or None,
             }
@@ -110,13 +136,13 @@ def extract_items_from_page(html: str) -> list[dict]:
     return items
 
 
-async def fetch_menu_html() -> str:
+async def fetch_menu_html(url: str) -> str:
     settings = get_settings()
     async with build_async_httpx_client(
         settings, timeout=30.0, follow_redirects=True
     ) as client:
         response = await client.get(
-            WARMOVEN_MENU_URL,
+            url,
             headers={"User-Agent": "Mozilla/5.0 (WarmOven menu sync bot)"},
         )
         response.raise_for_status()
@@ -124,8 +150,15 @@ async def fetch_menu_html() -> str:
 
 
 async def sync_menu() -> int:
-    html = await fetch_menu_html()
-    items = extract_items_from_page(html)
+    async with async_session_factory() as session:
+        config_repository = ConfigRepository(session)
+        business_config = await config_repository.get()
+        menu_url = business_config.menu_source_url
+        await session.commit()
+
+    platform = detect_platform(menu_url)
+    html = await fetch_menu_html(menu_url)
+    items = extract_items_from_page(html, platform)
 
     async with async_session_factory() as session:
         repository = MenuRepository(session)
@@ -140,7 +173,7 @@ async def sync_menu() -> int:
             )
         await session.commit()
 
-    logger.info("menu_sync_complete", item_count=len(items))
+    logger.info("menu_sync_complete", item_count=len(items), platform=platform)
     return len(items)
 
 

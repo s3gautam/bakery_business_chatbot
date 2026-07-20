@@ -27,5 +27,18 @@ services:
     ports:
       - "6379:6379"
 
+  ui:
+    build: .
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    environment:
+      API_BASE_URL: http://api:8000
+    depends_on:
+      - api
+    command: >
+      streamlit run streamlit_app/Home.py --server.address 0.0.0.0 --server.port 8501
+
 volumes:
   warmoven_pgdata:

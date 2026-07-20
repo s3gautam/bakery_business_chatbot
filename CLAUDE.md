@@ -30,6 +30,30 @@ added yet. As the project grows, update this file with:
 _To be filled in once the project is initialized (e.g. `npm install`,
 `npm run dev`, `npm test`)._
 
+## Configurable Business Settings
+
+The following are **admin-configurable at runtime**, stored in the
+`business_config` table (singleton row, `app/models/business_config.py`),
+never hardcoded:
+
+- Menu source link (Swiggy or Zomato)
+- Minimum cart value for free delivery
+- Free delivery radius
+- Delivery time
+- Swiggy/Zomato flat discount %
+- Payment phone number and UPI ID
+- Freeform extra instructions appended to the assistant's system prompt
+
+They're read/written via `GET|PUT /config` (`app/api/routes/config.py`,
+`app/repositories/config_repository.py`) and edited through the
+Streamlit **Configure** page (`streamlit_app/pages/1_⚙️_Configure.py`).
+The menu scraper and the agent's system prompt both pull from this table
+— do not reintroduce hardcoded copies of these values elsewhere.
+
+The `order_phone_number`, `custom_cake_phone_number`, and
+`bulk_order_phone_number` (call-to-order routing) remain env-var-backed
+in `app/config.py` since they're not part of the Configure page's scope.
+
 ## Development Roadmap
 
 Build this project in **3 incremental stages**. Do not jump ahead to a

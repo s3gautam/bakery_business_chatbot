@@ -9,6 +9,7 @@ from app.agent.state import AgentState
 from app.agent.tools.feedback_tool import FeedbackExtraction, FeedbackTool
 from app.agent.tools.menu_tool import MenuTool
 from app.config import Settings
+from app.models.business_config import BusinessConfig
 from app.services.business_hours import BusinessHoursService
 from app.services.language import LanguageDetectionService
 from app.services.llm import LLMService
@@ -30,6 +31,7 @@ _BULK_ORDER_TEMPLATE = (
 @dataclass
 class AgentDependencies:
     settings: Settings
+    business_config: BusinessConfig
     llm_service: LLMService
     nlu_service: NLUService
     language_service: LanguageDetectionService
@@ -95,7 +97,7 @@ def build_graph(deps: AgentDependencies):
         if state.get("reply"):
             return {}
 
-        system_prompt = build_reply_system_prompt(deps.settings)
+        system_prompt = build_reply_system_prompt(deps.settings, deps.business_config)
         if not deps.business_hours_service.is_open(datetime.now()):
             system_prompt += (
                 "\nThe bakery is currently outside business hours. Mention "

@@ -3,7 +3,7 @@ import logging
 import structlog
 from fastapi import FastAPI
 
-from app.api.routes import chat, feedback, health, menu
+from app.api.routes import chat, config, feedback, health, menu
 from app.config import get_settings
 
 logging_configured = False
@@ -39,6 +39,7 @@ def create_app() -> FastAPI:
     app.include_router(menu.router, tags=["menu"])
     app.include_router(feedback.router, tags=["feedback"])
     app.include_router(chat.router, tags=["chat"])
+    app.include_router(config.router, tags=["config"])
 
     return app
 

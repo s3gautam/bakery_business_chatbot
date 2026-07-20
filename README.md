@@ -20,8 +20,9 @@ cp .env.example .env
 docker compose up --build
 ```
 
-This starts Postgres, Redis, and the API on `http://localhost:8000`, and
-runs `alembic upgrade head` automatically.
+This starts Postgres, Redis, the API on `http://localhost:8000`, and the
+Streamlit UI on `http://localhost:8501`, and runs `alembic upgrade head`
+automatically.
 
 ### Without Docker
 
@@ -30,7 +31,29 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 alembic upgrade head
 uvicorn app.main:app --reload
+
+# in a second terminal
+streamlit run streamlit_app/Home.py
 ```
+
+## UI
+
+The Streamlit app (`streamlit_app/`) has two pages:
+
+- **Home** — the customer-facing chat window.
+- **⚙️ Configure** — an admin page to change, at runtime (no redeploy):
+  - the menu source link (Swiggy or Zomato)
+  - minimum cart value for free delivery
+  - free delivery radius
+  - delivery time
+  - Swiggy/Zomato flat discount %
+  - payment phone number and UPI ID
+  - freeform extra instructions for the assistant
+
+These settings live in the `business_config` table and are read by the
+agent on every chat request — no restart needed after saving. Set
+`API_BASE_URL` (default `http://localhost:8000`) if the UI and API run on
+different hosts.
 
 ### Corporate SSL interception
 
