@@ -414,6 +414,19 @@ Never promise compensation.
 
 Never claim order has been placed until payment validation succeeds.
 
+**Zero hallucinations, especially about cart/order/payment state.** A
+customer-facing bot that can be talked into (or drift into) claiming a
+false success is not acceptable — see `app/agent/reply_templates.py`.
+Every cart/checkout/delivery-slot/payment turn's confirmation to the
+customer is built deterministically in code from the tool result, never
+by asking an LLM to describe what happened. The LLM is only used to
+translate that fixed text into Hindi/Hinglish (a translate-only prompt,
+not open-ended generation) — never to decide *what* the message says.
+When adding a new cart/checkout/payment outcome, add its template to
+`build_deterministic_reply` rather than relying on the general system
+prompt's "don't hallucinate" instructions, which are necessary but not
+sufficient (prompt instructions are probabilistic; code is not).
+
 ---
 
 # Error Handling

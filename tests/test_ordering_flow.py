@@ -106,6 +106,22 @@ async def test_add_to_cart_updates_state(tmp_path):
         {"conversation_id": "c1", "user_message": "add 2 chocolate cakes", "cart": []}
     )
     assert result["cart"] == [{"name": "Chocolate Cake", "unit_price": 500.0, "quantity": 2}]
+    assert result["reply"] == "Added 2 x Chocolate Cake to your cart."
+
+
+@pytest.mark.asyncio
+async def test_cart_add_reply_never_claims_success_when_item_not_found(tmp_path):
+    """Regression test: the bot must never say an item was added unless
+    it actually was — this is what let it claim a nonexistent item was
+    in the cart in the originally reported bug.
+    """
+    graph = _build(tmp_path, [_nlu("cart_add", cart_item_name="banana bread", cart_quantity=1)])
+    result = await graph.ainvoke(
+        {"conversation_id": "c1", "user_message": "add banana bread", "cart": []}
+    )
+    assert result["cart"] == []
+    assert "Added" not in result["reply"]
+    assert "banana bread" in result["reply"]
 
 
 @pytest.mark.asyncio
@@ -172,6 +188,8 @@ async def test_payment_screenshot_validates_and_generates_order_id(tmp_path):
     assert result["payment_status"] == "validated"
     assert result["order_id"].startswith("TB-")
     assert result["cart"] == []
+    assert "confirmed" in result["reply"].lower()
+    assert result["order_id"] in result["reply"]
 
 
 @pytest.mark.asyncio

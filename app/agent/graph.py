@@ -5,6 +5,7 @@ from langgraph.graph import END, StateGraph
 
 from app.agent.nlu import NLUResult, NLUService
 from app.agent.prompts import build_reply_system_prompt
+from app.agent.reply_templates import build_deterministic_reply
 from app.agent.state import AgentState, CustomerDetails
 from app.agent.tools.cart_tool import CartTool, compute_totals, format_cart
 from app.agent.tools.feedback_tool import FeedbackExtraction, FeedbackTool
@@ -12,7 +13,7 @@ from app.agent.tools.menu_tool import MenuTool
 from app.agent.tools.order_tool import generate_order_id
 from app.agent.tools.payment_tool import PaymentTool
 from app.config import Settings
-from app.services.business_hours import BusinessHoursService
+from app.services.business_hours import OFFLINE_MESSAGE, BusinessHoursService
 from app.services.delivery_slots import generate_slots, match_slot
 from app.services.language import LanguageDetectionService
 from app.services.llm import LLMService
@@ -27,6 +28,33 @@ _BULK_ORDER_TEMPLATE = (
     "can help with pricing and logistics."
 )
 _REQUIRED_CUSTOMER_FIELDS = ("name", "phone", "email", "address")
+
+_LANGUAGE_NAMES = {"hi": "Hindi", "hinglish": "Hinglish (Hindi written in Latin script)"}
+
+_TRANSLATE_SYSTEM_PROMPT = (
+    "You are a translator, not an assistant. Translate the given message "
+    "into {language}. Preserve every fact, number, name, and detail "
+    "exactly as given — do not add, remove, guess, or change any "
+    "information. Reply with only the translated text, nothing else."
+)
+
+
+async def _localize(llm_service: LLMService, text: str, language: str) -> str:
+    """Translate a deterministically-built reply into the customer's
+    language. This is a translate-only call (not open-ended generation)
+    so it carries far less hallucination risk than describing what
+    happened — the facts are already fixed by `text`.
+    """
+    target = _LANGUAGE_NAMES.get(language)
+    if not target:
+        return text
+    return await llm_service.complete(
+        messages=[
+            {"role": "system", "content": _TRANSLATE_SYSTEM_PROMPT.format(language=target)},
+            {"role": "user", "content": text},
+        ],
+        temperature=0.0,
+    )
 
 
 @dataclass
@@ -257,6 +285,17 @@ def build_graph(deps: AgentDependencies):
     async def generate_reply(state: AgentState) -> AgentState:
         if state.get("reply"):
             return {}
+
+        deterministic_reply = build_deterministic_reply(
+            state.get("intent"), state.get("tool_result")
+        )
+        if deterministic_reply is not None:
+            if not deps.business_hours_service.is_open(datetime.now()):
+                deterministic_reply = f"{deterministic_reply}\n\n{OFFLINE_MESSAGE}"
+            localized = await _localize(
+                deps.llm_service, deterministic_reply, state.get("detected_language", "en")
+            )
+            return {"reply": localized}
 
         system_prompt = build_reply_system_prompt(deps.settings, deps.business_config)
         if not deps.business_hours_service.is_open(datetime.now()):
