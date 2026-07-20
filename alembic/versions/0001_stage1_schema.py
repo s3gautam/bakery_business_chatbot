@@ -49,12 +49,15 @@ def upgrade() -> None:
         "swiggy", "zomato", "other", name="feedback_platform"
     )
     feedback_platform.create(op.get_bind(), checkfirst=True)
+    feedback_platform_column = postgresql.ENUM(
+        "swiggy", "zomato", "other", name="feedback_platform", create_type=False
+    )
 
     op.create_table(
         "feedback",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("order_id", sa.String(64), nullable=True),
-        sa.Column("platform", feedback_platform, nullable=False),
+        sa.Column("platform", feedback_platform_column, nullable=False),
         sa.Column("message", sa.Text(), nullable=False),
         sa.Column("conversation_id", sa.String(64), nullable=False),
         sa.Column(
@@ -69,12 +72,15 @@ def upgrade() -> None:
 
     message_role = postgresql.ENUM("user", "assistant", name="message_role")
     message_role.create(op.get_bind(), checkfirst=True)
+    message_role_column = postgresql.ENUM(
+        "user", "assistant", name="message_role", create_type=False
+    )
 
     op.create_table(
         "chat_history",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("conversation_id", sa.String(64), nullable=False),
-        sa.Column("role", message_role, nullable=False),
+        sa.Column("role", message_role_column, nullable=False),
         sa.Column("content", sa.Text(), nullable=False),
         sa.Column("detected_language", sa.String(16), nullable=True),
         sa.Column("intent", sa.String(64), nullable=True),
