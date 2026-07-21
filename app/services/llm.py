@@ -25,12 +25,17 @@ class LLMService:
         temperature: float = 0.3,
         max_tokens: int = 800,
         model: str | None = None,
+        json_mode: bool = False,
     ) -> str:
+        kwargs: dict = {}
+        if json_mode:
+            kwargs["response_format"] = {"type": "json_object"}
         response = await self._client.chat.completions.create(
             model=model or self._settings.groq_model,
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
+            **kwargs,
         )
         content = response.choices[0].message.content
         return content.strip() if content else ""

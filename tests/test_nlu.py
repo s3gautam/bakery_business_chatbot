@@ -61,6 +61,37 @@ async def test_classify_works_without_history():
 
 
 @pytest.mark.asyncio
+async def test_classify_requests_json_mode():
+    llm = _RecordingLLMService(json.dumps({"intent": "cart_add", "cart_item_name": "x"}))
+    service = NLUService(llm)
+    llm.complete = None  # ensure we inspect kwargs via a wrapper below
+
+    calls = {}
+
+    async def _complete(messages, **kwargs):
+        calls.update(kwargs)
+        return json.dumps({"intent": "cart_add", "cart_item_name": "x"})
+
+    llm.complete = _complete
+    await service.classify("add 1 red velvet cake to cart", _business_config())
+
+    assert calls.get("json_mode") is True
+
+
+@pytest.mark.asyncio
+async def test_classify_strips_markdown_fenced_json():
+    llm = _RecordingLLMService(
+        "```json\n" + json.dumps({"intent": "cart_add", "cart_item_name": "Red Velvet"}) + "\n```"
+    )
+    service = NLUService(llm)
+
+    result = await service.classify("add 1 red velvet cake to cart", _business_config())
+
+    assert result.intent == "cart_add"
+    assert result.cart_item_name == "Red Velvet"
+
+
+@pytest.mark.asyncio
 async def test_classify_caps_history_length():
     llm = _RecordingLLMService(json.dumps({"intent": "general"}))
     service = NLUService(llm)

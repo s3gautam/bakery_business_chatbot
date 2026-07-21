@@ -42,6 +42,15 @@ class NLUResult:
     delivery_slot_text: str | None
 
 
+def _strip_markdown_fence(raw: str) -> str:
+    text = raw.strip()
+    if text.startswith("```"):
+        text = text.split("\n", 1)[1] if "\n" in text else ""
+        if text.endswith("```"):
+            text = text[: -len("```")]
+    return text.strip()
+
+
 def _safe_platform(raw: object) -> str | None:
     if not isinstance(raw, str):
         return None
@@ -81,10 +90,11 @@ class NLUService:
             messages=messages,
             temperature=0.0,
             max_tokens=400,
+            json_mode=True,
         )
 
         try:
-            data = json.loads(raw)
+            data = json.loads(_strip_markdown_fence(raw))
         except (json.JSONDecodeError, TypeError):
             data = {}
 
