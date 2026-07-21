@@ -13,7 +13,19 @@ def test_load_creates_defaults_when_file_missing(tmp_path):
     store = _store(tmp_path)
     config = store.load()
     assert config.min_cart_for_free_delivery == 300.0
+    assert config.cart_reminder_minutes == 3.0
     assert (tmp_path / "business_config.json").exists()
+
+
+def test_update_cart_reminder_minutes(tmp_path):
+    store = _store(tmp_path)
+    store.load()
+
+    updated = store.update(cart_reminder_minutes=5.0)
+    assert updated.cart_reminder_minutes == 5.0
+
+    reloaded = store.load()
+    assert reloaded.cart_reminder_minutes == 5.0
 
 
 def test_update_persists_only_provided_fields(tmp_path):

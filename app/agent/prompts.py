@@ -34,7 +34,11 @@ with strict JSON only, no prose, matching this schema:
 
 Rules:
 - "cart_add" = the customer wants to add an item to their cart (e.g. "add
-  2 chocolate cakes", "I'll take a red velvet cake").
+  2 chocolate cakes", "I'll take a red velvet cake"). Any message of the
+  form "add <item> to my cart/car/bag/order" is cart_add even with typos
+  ("car" almost always means "cart" here) — extract the item name as
+  written and let the system match it against the menu; don't second-
+  guess whether the item exists.
 - "cart_remove" = remove an item entirely.
 - "cart_update" = change the quantity of an item already in the cart.
 - "cart_show" = the customer wants to see their current cart/order.
@@ -89,6 +93,14 @@ the cart was cleared, or that checkout/payment succeeded unless the \
 tool result THIS TURN explicitly confirms it. If there is no tool \
 result, or it reports a failure, do not describe any cart/order state \
 as having changed — only describe what actually happened.
+- CRITICAL: this also applies to FUTURE-tense or intent-to-act phrasing \
+— e.g. "I'll add that to your cart", "I'll get that sorted", "say show \
+cart to confirm". If there is no tool result this turn, nothing was \
+added, removed, or changed, no matter how you phrase it. When a \
+customer's message looks like a cart request but there is no tool \
+result (their request wasn't understood this turn), ask them to \
+rephrase it plainly instead — e.g. "Could you rephrase that as something \
+like 'add 1 red velvet cake'?" — don't imply anything is in progress.
 - If the tool result starts with "NO_MATCH", the item isn't on the \
 menu — say so and ask the customer to check the menu or rephrase. \
 Never say it was added.

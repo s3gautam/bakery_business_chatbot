@@ -83,6 +83,18 @@ with st.form("business_config_form"):
         help="Any one of these names appearing as the payment receiver is accepted.",
     )
 
+    st.subheader("Abandoned cart reminder")
+    cart_reminder_minutes = st.number_input(
+        "Minutes of inactivity before emailing a cart reminder",
+        min_value=1.0,
+        value=float(config.cart_reminder_minutes),
+        step=1.0,
+        help=(
+            "Only fires if the customer has given an email and the cart isn't "
+            "empty. Only works while their browser tab stays open — see README."
+        ),
+    )
+
     st.subheader("Custom instructions")
     extra_instructions = st.text_area(
         "Extra instructions for the assistant",
@@ -109,6 +121,7 @@ if submitted:
         payment_phone_number=payment_phone_number,
         payment_upi_id=payment_upi_id,
         accepted_receiver_names=accepted_receiver_names,
+        cart_reminder_minutes=cart_reminder_minutes,
         extra_instructions=extra_instructions or None,
     )
     st.success("Settings saved.")

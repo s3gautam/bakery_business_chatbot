@@ -1,4 +1,4 @@
-from app.agent.prompts import build_reply_system_prompt
+from app.agent.prompts import build_nlu_system_prompt, build_reply_system_prompt
 from app.config import get_settings
 from app.store.models import BusinessConfig
 
@@ -51,3 +51,15 @@ def test_prompt_forbids_claiming_cart_success_without_tool_result():
     assert "NO_MATCH" in prompt
     assert "AMBIGUOUS" in prompt
     assert "do not describe any cart/order state" in prompt
+
+
+def test_prompt_forbids_future_tense_cart_promises():
+    prompt = build_reply_system_prompt(get_settings(), _business_config())
+    assert "FUTURE-tense" in prompt
+    assert "I'll add that to your cart" in prompt
+
+
+def test_nlu_prompt_handles_cart_typos():
+    prompt = build_nlu_system_prompt(_business_config())
+    assert "car" in prompt
+    assert "cart_add" in prompt

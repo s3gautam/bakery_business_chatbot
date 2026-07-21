@@ -19,6 +19,7 @@ _DEFAULTS = BusinessConfig(
     payment_upi_id="7479219293@paytm",
     delivery_fee=75.0,
     accepted_receiver_names="Kouzina Kafe, Seema Gautam, Siddhant Gautam, Siddharth Gautam",
+    cart_reminder_minutes=3.0,
     extra_instructions=None,
 )
 

@@ -15,8 +15,6 @@ from app.config import get_settings  # noqa: E402
 from app.services.email_service import EmailService  # noqa: E402
 from app.store.config_store import ConfigStore  # noqa: E402
 
-_CART_REMINDER_DELAY_SECONDS = 3 * 60
-
 business_name = ConfigStore(get_settings()).load().business_name
 
 st.set_page_config(page_title=f"{business_name} Assistant", page_icon="🍰", layout="centered")
@@ -50,6 +48,8 @@ if "cart_updated_at" not in st.session_state:
     st.session_state.cart_updated_at = None
 if "cart_reminder_sent" not in st.session_state:
     st.session_state.cart_reminder_sent = False
+if "cart_reminder_last_result" not in st.session_state:
+    st.session_state.cart_reminder_last_result = None
 
 st.title(f"🍰 {business_name}")
 st.caption(
@@ -126,13 +126,18 @@ if user_input or payment_screenshot:
 @st.fragment(run_every=20)
 def _check_abandoned_cart() -> None:
     """Polls elapsed time and emails a reminder once the cart has sat
-    untouched for _CART_REMINDER_DELAY_SECONDS. Only runs while this
-    browser tab stays open — see abandoned_cart_tool.py's docstring.
+    untouched for the configured delay (Configure page > Abandoned cart
+    reminder). Only runs while this browser tab stays open — see
+    abandoned_cart_tool.py's docstring.
     """
     order_state = st.session_state.order_state
     cart = order_state.get("cart") or []
     customer_email = order_state.get("customer_details", {}).get("email")
     updated_at = st.session_state.cart_updated_at
+
+    settings = get_settings()
+    business_config = ConfigStore(settings).load()
+    delay_seconds = business_config.cart_reminder_minutes * 60
 
     if (
         not cart
@@ -140,15 +145,14 @@ def _check_abandoned_cart() -> None:
         or st.session_state.cart_reminder_sent
         or order_state.get("payment_status") == "validated"
         or updated_at is None
-        or time.time() - updated_at < _CART_REMINDER_DELAY_SECONDS
+        or time.time() - updated_at < delay_seconds
     ):
         return
 
-    settings = get_settings()
-    business_config = ConfigStore(settings).load()
     tool = AbandonedCartReminderTool(EmailService(settings))
     sent = asyncio.run(tool.send(cart, order_state["customer_details"], business_config))
     st.session_state.cart_reminder_sent = True
+    st.session_state.cart_reminder_last_result = "sent" if sent else "failed"
     if sent:
         st.toast("Sent a cart reminder email — don't forget to complete your order!")
 
@@ -177,7 +181,24 @@ with st.sidebar:
         st.session_state.uploader_key += 1
         st.session_state.cart_updated_at = None
         st.session_state.cart_reminder_sent = False
+        st.session_state.cart_reminder_last_result = None
         st.rerun()
+
+    if st.session_state.order_state.get("cart") and st.session_state.order_state.get(
+        "customer_details", {}
+    ).get("email"):
+        with st.expander("Cart reminder status (debug)"):
+            settings = get_settings()
+            st.text(f"SMTP configured: {settings.email_configured}")
+            st.text(f"Cart updated at: {st.session_state.cart_updated_at}")
+            st.text(f"Reminder sent: {st.session_state.cart_reminder_sent}")
+            st.text(f"Last result: {st.session_state.cart_reminder_last_result}")
+            if not settings.email_configured:
+                st.warning(
+                    "SMTP_USERNAME/SMTP_PASSWORD aren't set, so no reminder, "
+                    "feedback, or order confirmation email can send. Set them "
+                    "in your Streamlit secrets (see .env.example)."
+                )
 
     st.divider()
     st.page_link("pages/2_🍰_Menu.py", label="View full menu", icon="🍰")

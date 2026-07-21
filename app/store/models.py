@@ -23,6 +23,7 @@ class BusinessConfig:
     payment_upi_id: str
     delivery_fee: float = 75.0
     accepted_receiver_names: str = "Kouzina Kafe"
+    cart_reminder_minutes: float = 3.0
     extra_instructions: str | None = None
 
     @property
