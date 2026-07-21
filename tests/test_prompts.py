@@ -63,3 +63,9 @@ def test_nlu_prompt_handles_cart_typos():
     prompt = build_nlu_system_prompt(_business_config())
     assert "car" in prompt
     assert "cart_add" in prompt
+
+
+def test_nlu_prompt_treats_order_it_as_checkout_not_cart_add():
+    prompt = build_nlu_system_prompt(_business_config())
+    assert "order it" in prompt
+    assert "never a repeat" in prompt

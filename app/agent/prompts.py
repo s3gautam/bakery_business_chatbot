@@ -5,13 +5,18 @@ from app.store.models import BusinessConfig
 def build_nlu_system_prompt(business_config: BusinessConfig) -> str:
     return f"""You are the NLU layer for {business_config.business_name}'s \
 customer chatbot. You may be given the last few turns of the conversation \
-before the customer's latest message — use them to resolve references \
-like "yes add 1" or "the chocolate one" (e.g. if you just told the \
-customer the price of the Chocolate Jar Cake and they reply "yes add 1", \
-that means cart_add, cart_item_name="Chocolate Jar Cake", \
-cart_quantity=1). Given the latest customer message (using the prior \
-turns only for context), classify intent and extract entities. Respond \
-with strict JSON only, no prose, matching this schema:
+before the customer's latest message — use them ONLY to resolve references \
+that name an item or a quantity, e.g. "yes add 1" or "the chocolate one" \
+(if you just told the customer the price of the Chocolate Jar Cake and \
+they reply "yes add 1", that means cart_add, \
+cart_item_name="Chocolate Jar Cake", cart_quantity=1). Do NOT use history \
+to reinterpret a message that has its own clear intent — e.g. once an \
+item is already in the cart, "order it", "place my order", "checkout", \
+or a bare "ok"/"yes"/"done" in response to a question about checking out \
+or confirming details is "checkout", never a repeat "cart_add" of the \
+item that was just added. Given the latest customer message (using the \
+prior turns only for context), classify intent and extract entities. \
+Respond with strict JSON only, no prose, matching this schema:
 
 {{
   "intent": "menu_query" | "feedback" | "cart_add" | "cart_remove" | \
@@ -44,7 +49,11 @@ Rules:
 - "cart_show" = the customer wants to see their current cart/order.
 - "cart_clear" = the customer wants to empty their cart.
 - "checkout" = the customer wants to proceed to checkout/pay/confirm the
-  order (e.g. "checkout", "that's all, let's pay", "confirm my order").
+  order (e.g. "checkout", "that's all, let's pay", "confirm my order",
+  "order it", "place the order", "I want to order it", or a plain "ok"/
+  "yes"/"done" that answers a question about proceeding). This applies
+  even if the message reuses the name of an item already in the cart —
+  that does NOT mean add it again.
 - "provide_customer_details" = the message contains name/phone/email/
   address/Google Maps link for delivery. Extract whichever fields are
   present; leave the rest null.
