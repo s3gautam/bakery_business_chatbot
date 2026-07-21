@@ -53,6 +53,23 @@ def _normalize_identifier(value: str) -> str:
     return re.sub(r"[^a-z0-9@.]", "", value.lower())
 
 
+def _digits_only(value: str) -> str:
+    return re.sub(r"\D", "", value)
+
+
+def _identifier_matches(receiver_identifier: str, phone_number: str, upi_id: str) -> bool:
+    normalized_receiver = _normalize_identifier(receiver_identifier)
+    if normalized_receiver in {_normalize_identifier(phone_number), _normalize_identifier(upi_id)}:
+        return True
+    # UPI VPAs for the same phone number can carry different bank/PSP
+    # suffixes (e.g. "@paytm" vs "@ptsbi") depending on which linked
+    # account received the payment — the digits before "@" identify the
+    # payer, not the suffix, so match on those alone.
+    receiver_prefix = _digits_only(normalized_receiver.split("@", 1)[0])
+    phone_digits = _digits_only(phone_number)
+    return bool(receiver_prefix) and bool(phone_digits) and receiver_prefix == phone_digits
+
+
 def _name_matches(extracted_name: str | None, accepted_names: list[str]) -> bool:
     if not extracted_name:
         return False
@@ -156,11 +173,9 @@ class PaymentTool:
                 amount=amount,
             )
 
-        expected_identifiers = {
-            _normalize_identifier(business_config.payment_phone_number),
-            _normalize_identifier(business_config.payment_upi_id),
-        }
-        if not receiver_identifier or _normalize_identifier(receiver_identifier) not in expected_identifiers:
+        if not receiver_identifier or not _identifier_matches(
+            receiver_identifier, business_config.payment_phone_number, business_config.payment_upi_id
+        ):
             return PaymentValidationResult(
                 is_valid=False,
                 reason="The receiver phone number/UPI on the screenshot doesn't match ours.",

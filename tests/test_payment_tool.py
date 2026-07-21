@@ -68,6 +68,17 @@ async def test_validates_successful_payment_to_configured_upi():
 
 
 @pytest.mark.asyncio
+async def test_validates_upi_with_different_bank_suffix_but_same_phone_number():
+    # Real-world case: Paytm/UPI VPAs for the same phone number carry a
+    # bank/PSP-specific suffix (e.g. "@ptsbi" for an SBI-linked account)
+    # that can legitimately differ from the configured "@paytm" default —
+    # the digits before "@" still identify the same receiver.
+    tool = _tool(_stub_response(receiver_phone_or_upi="7479219293@ptsbi"))
+    result = await tool.validate(_FAKE_IMAGE_B64, _business_config())
+    assert result.is_valid is True
+
+
+@pytest.mark.asyncio
 async def test_rejects_wrong_receiver_name():
     tool = _tool(_stub_response(receiver_name="Someone Else"))
     result = await tool.validate(_FAKE_IMAGE_B64, _business_config())
