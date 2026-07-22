@@ -69,3 +69,10 @@ def test_nlu_prompt_treats_order_it_as_checkout_not_cart_add():
     prompt = build_nlu_system_prompt(_business_config())
     assert "order it" in prompt
     assert "never a repeat" in prompt
+
+
+def test_nlu_prompt_handles_order_and_send_phrasing_as_cart_add():
+    prompt = build_nlu_system_prompt(_business_config())
+    normalized = " ".join(prompt.split())
+    assert "order 2 red velvet cakes" in normalized
+    assert "send me 2 cakes" in normalized

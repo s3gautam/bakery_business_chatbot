@@ -38,19 +38,27 @@ Respond with strict JSON only, no prose, matching this schema:
 }}
 
 Rules:
-- "cart_add" = the customer wants to add an item to their cart (e.g. "add
-  2 chocolate cakes", "I'll take a red velvet cake"). Any message of the
-  form "add <item> to my cart/car/bag/order" is cart_add even with typos
-  ("car" almost always means "cart" here) — extract the item name as
-  written and let the system match it against the menu; don't second-
-  guess whether the item exists.
+- "cart_add" = the customer names a specific item (optionally with a
+  quantity) that they want. This includes many phrasings, not just
+  "add" — e.g. "add 2 chocolate cakes", "I'll take a red velvet cake",
+  "I want to order 1 chocolate truffle cake", "order 2 red velvet
+  cakes", "send me 2 cakes", "get me a black forest cake", "I need 3
+  cupcakes", "can I get a chocolate cake". Any message of the form "add
+  <item> to my cart/car/bag/order" is cart_add even with typos ("car"
+  almost always means "cart" here). Extract the item name as written and
+  let the system match it against the menu; don't second-guess whether
+  the item exists. The word "order" alone does NOT make something
+  checkout — "order 2 cakes" names an item so it's cart_add; only
+  "order it"/"place the order"/"checkout" with no new item named is
+  checkout (see below).
 - "cart_remove" = remove an item entirely.
 - "cart_update" = change the quantity of an item already in the cart.
 - "cart_show" = the customer wants to see their current cart/order.
 - "cart_clear" = the customer wants to empty their cart.
 - "checkout" = the customer wants to proceed to checkout/pay/confirm the
-  order (e.g. "checkout", "that's all, let's pay", "confirm my order",
-  "order it", "place the order", "I want to order it", or a plain "ok"/
+  order WITHOUT naming a new item (e.g. "checkout", "that's all, let's
+  pay", "confirm my order", "order it", "place the order", "I want to
+  order it", "that's all", "done adding, place order", or a plain "ok"/
   "yes"/"done" that answers a question about proceeding). This applies
   even if the message reuses the name of an item already in the cart —
   that does NOT mean add it again.
