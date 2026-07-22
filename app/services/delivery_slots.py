@@ -1,7 +1,7 @@
 import re
 from datetime import datetime, timedelta
 
-_SLOT_COUNT = 6
+_SLOT_COUNT = 3
 # Slots starting in this hour range (inclusive start, exclusive end) are
 # never proactively offered, even though the business is technically open
 # through the night — only shown if the customer explicitly asks for one.

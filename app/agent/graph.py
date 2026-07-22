@@ -119,7 +119,9 @@ def build_graph(deps: AgentDependencies):
     graph = StateGraph(AgentState)
 
     async def detect_language(state: AgentState) -> AgentState:
-        language = await deps.language_service.detect(state["user_message"])
+        language = await deps.language_service.detect(
+            state["user_message"], state.get("detected_language") or "en"
+        )
         # Defensively clear per-turn fields in case a caller passed in a
         # previous turn's full result (only cart/customer_details/
         # delivery_slot/payment_status/order_id are meant to carry over

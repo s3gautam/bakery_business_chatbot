@@ -3,10 +3,10 @@ from datetime import datetime
 from app.services.delivery_slots import generate_slots, match_slot
 
 
-def test_generate_slots_returns_six_hourly_slots_after_prep_time():
+def test_generate_slots_returns_three_hourly_slots_after_prep_time():
     # 10:15 + 120min prep = 12:15, rounds up to the next full hour (1PM).
     slots = generate_slots(datetime(2026, 7, 20, 10, 15), prep_minutes=120)
-    assert len(slots) == 6
+    assert len(slots) == 3
     assert slots[0] == "1PM-2PM"
 
 

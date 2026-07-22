@@ -21,7 +21,17 @@ st.set_page_config(page_title=f"{business_name} Assistant", page_icon="🍰", la
 
 # Keys carried across turns within a conversation — there is no database,
 # so this session dict *is* the order state (see CLAUDE.md > Architecture).
-_PERSISTENT_KEYS = ("cart", "customer_details", "delivery_slot", "payment_status", "order_id")
+# detected_language is sticky across turns (see LanguageDetectionService)
+# so an ambiguous English-looking message (e.g. an address block) doesn't
+# get reclassified from scratch and flip the conversation into Hindi.
+_PERSISTENT_KEYS = (
+    "cart",
+    "customer_details",
+    "delivery_slot",
+    "payment_status",
+    "order_id",
+    "detected_language",
+)
 
 
 def _fresh_order_state() -> dict:
@@ -31,6 +41,7 @@ def _fresh_order_state() -> dict:
         "delivery_slot": None,
         "payment_status": "none",
         "order_id": None,
+        "detected_language": "en",
     }
 
 
