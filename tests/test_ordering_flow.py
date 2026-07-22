@@ -29,6 +29,15 @@ class _StubLLMService:
         return "OK"
 
 
+class _RecordingLLMService(_StubLLMService):
+    def __init__(self) -> None:
+        self.last_messages: list[dict] | None = None
+
+    async def complete(self, messages, **kwargs) -> str:
+        self.last_messages = messages
+        return await super().complete(messages, **kwargs)
+
+
 class _RecordingEmailService:
     def __init__(self) -> None:
         self.sent: list[tuple[str, str, str]] = []
@@ -85,12 +94,12 @@ def _business_config() -> BusinessConfig:
     )
 
 
-def _build(tmp_path, nlu_results: list[NLUResult], email_service=None):
+def _build(tmp_path, nlu_results: list[NLUResult], email_service=None, llm_service=None):
     settings = get_settings().model_copy(update={"menu_file_path": tmp_path / "menu.json"})
     menu_store = MenuStore(settings)
     menu_store.save_all([MenuItem("Chocolate Cake", None, 500.0, "Chocolate", None, True)])
 
-    llm_service = _StubLLMService()
+    llm_service = llm_service or _StubLLMService()
     email_service = email_service or _RecordingEmailService()
     deps = AgentDependencies(
         settings=settings,
@@ -220,3 +229,27 @@ async def test_custom_cake_request_routes_to_phone_template(tmp_path):
         {"conversation_id": "c1", "user_message": "I need a custom 3-tier cake", "cart": []}
     )
     assert "7015943285" in result["reply"]
+
+
+@pytest.mark.asyncio
+async def test_general_reply_includes_conversation_history(tmp_path):
+    llm_service = _RecordingLLMService()
+    graph = _build(tmp_path, [_nlu("general")], llm_service=llm_service)
+    history = [
+        {"role": "user", "content": "do you have eggless options?"},
+        {"role": "assistant", "content": "Yes, we have an eggless Black Forest cake."},
+    ]
+
+    await graph.ainvoke(
+        {
+            "conversation_id": "c1",
+            "user_message": "is that one available in a smaller size?",
+            "cart": [],
+            "history": history,
+        }
+    )
+
+    roles_and_content = [(m["role"], m["content"]) for m in llm_service.last_messages]
+    assert ("user", "do you have eggless options?") in roles_and_content
+    assert ("assistant", "Yes, we have an eggless Black Forest cake.") in roles_and_content
+    assert roles_and_content[-1] == ("user", "is that one available in a smaller size?")

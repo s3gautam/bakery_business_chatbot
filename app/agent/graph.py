@@ -335,16 +335,21 @@ def build_graph(deps: AgentDependencies):
                 f"Customer message: {state['user_message']}"
             )
 
-        reply = await deps.llm_service.complete(
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {
-                    "role": "system",
-                    "content": f"Detected language: {state['detected_language']}",
-                },
-                {"role": "user", "content": user_content},
-            ]
-        )
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {
+                "role": "system",
+                "content": f"Detected language: {state['detected_language']}",
+            },
+        ]
+        for turn in (state.get("history") or [])[-6:]:
+            role = turn.get("role")
+            content = turn.get("content")
+            if role in ("user", "assistant") and content:
+                messages.append({"role": role, "content": content})
+        messages.append({"role": "user", "content": user_content})
+
+        reply = await deps.llm_service.complete(messages=messages)
         return {"reply": reply}
 
     def route_after_language(state: AgentState) -> str:
