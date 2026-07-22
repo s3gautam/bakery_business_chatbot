@@ -2,16 +2,47 @@ import re
 from datetime import datetime, timedelta
 
 _SLOT_COUNT = 6
+# Slots starting in this hour range (inclusive start, exclusive end) are
+# never proactively offered, even though the business is technically open
+# through the night — only shown if the customer explicitly asks for one.
+_LATE_NIGHT_HOURS = range(0, 5)
 
 
-def generate_slots(now: datetime) -> list[str]:
-    """Generate 1-hour delivery slots starting from the next full hour."""
-    start = (now + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
+def _is_closed(hour: int, closed_hours: tuple[tuple[int, int], ...]) -> bool:
+    return any(start <= hour < end for start, end in closed_hours)
+
+
+def generate_slots(
+    now: datetime,
+    prep_minutes: int = 120,
+    closed_hours: tuple[tuple[int, int], ...] = ((5, 9),),
+    include_late_night: bool = False,
+    count: int = _SLOT_COUNT,
+) -> list[str]:
+    """Generate 1-hour delivery slots, earliest starting after `prep_minutes`
+    of prep time has elapsed from `now`, skipping any slot that starts
+    during closed business hours. By default also skips late-night slots
+    (12AM-5AM) — pass include_late_night=True to allow matching an
+    explicit customer request for one.
+    """
+    earliest = now + timedelta(minutes=prep_minutes)
+    start = earliest.replace(minute=0, second=0, microsecond=0)
+    if earliest.minute or earliest.second or earliest.microsecond:
+        start += timedelta(hours=1)
+
     slots = []
-    for i in range(_SLOT_COUNT):
-        slot_start = start + timedelta(hours=i)
-        slot_end = slot_start + timedelta(hours=1)
-        slots.append(f"{slot_start.strftime('%I%p').lstrip('0')}-{slot_end.strftime('%I%p').lstrip('0')}")
+    candidate = start
+    # Bounded search so a pathological all-closed config can't loop forever.
+    for _ in range(24 * 3):
+        if len(slots) >= count:
+            break
+        hour = candidate.hour
+        if not _is_closed(hour, closed_hours) and (include_late_night or hour not in _LATE_NIGHT_HOURS):
+            slot_end = candidate + timedelta(hours=1)
+            slots.append(
+                f"{candidate.strftime('%I%p').lstrip('0')}-{slot_end.strftime('%I%p').lstrip('0')}"
+            )
+        candidate += timedelta(hours=1)
     return slots
 
 

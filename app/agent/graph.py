@@ -82,6 +82,7 @@ def _checkout_status(
     customer_details: CustomerDetails,
     delivery_slot: str | None,
     business_config: BusinessConfig,
+    closed_hours: tuple[tuple[int, int], ...] = ((5, 9),),
 ) -> str:
     if not cart:
         return "EMPTY_CART"
@@ -91,7 +92,13 @@ def _checkout_status(
         return f"NEED_CUSTOMER_DETAILS: still need {', '.join(missing)}."
 
     if not delivery_slot:
-        slots = ", ".join(generate_slots(datetime.now()))
+        slots = ", ".join(
+            generate_slots(
+                datetime.now(),
+                prep_minutes=business_config.delivery_time_minutes,
+                closed_hours=closed_hours,
+            )
+        )
         return f"NEED_DELIVERY_SLOT: available slots are {slots}."
 
     totals = compute_totals(cart, business_config)
@@ -210,7 +217,9 @@ def build_graph(deps: AgentDependencies):
         cart = state.get("cart", [])
         customer_details = state.get("customer_details", {})
         delivery_slot = state.get("delivery_slot")
-        status = _checkout_status(cart, customer_details, delivery_slot, deps.business_config)
+        status = _checkout_status(
+            cart, customer_details, delivery_slot, deps.business_config, deps.settings.business_closed_hours
+        )
         updates: AgentState = {"tool_result": status}
         if status.startswith("READY_FOR_PAYMENT"):
             updates["payment_status"] = "awaiting_screenshot"
@@ -232,7 +241,9 @@ def build_graph(deps: AgentDependencies):
 
         cart = state.get("cart", [])
         delivery_slot = state.get("delivery_slot")
-        status = _checkout_status(cart, customer_details, delivery_slot, deps.business_config)
+        status = _checkout_status(
+            cart, customer_details, delivery_slot, deps.business_config, deps.settings.business_closed_hours
+        )
         updates: AgentState = {"customer_details": customer_details, "tool_result": status}
         if status.startswith("READY_FOR_PAYMENT"):
             updates["payment_status"] = "awaiting_screenshot"
@@ -240,19 +251,36 @@ def build_graph(deps: AgentDependencies):
 
     async def handle_delivery_slot(state: AgentState) -> AgentState:
         nlu_result: NLUResult = state["nlu_result"]
-        valid_slots = generate_slots(datetime.now())
-        matched = (
-            match_slot(nlu_result.delivery_slot_text, valid_slots)
-            if nlu_result.delivery_slot_text
-            else None
+        offered_slots = generate_slots(
+            datetime.now(),
+            prep_minutes=deps.business_config.delivery_time_minutes,
+            closed_hours=deps.settings.business_closed_hours,
         )
+        matched = None
+        if nlu_result.delivery_slot_text:
+            matched = match_slot(nlu_result.delivery_slot_text, offered_slots)
+            if not matched:
+                # Customer explicitly asked for a slot outside the
+                # proactively-offered list (e.g. late night) — allow it
+                # as long as it's still within business hours and past
+                # the prep-time cutoff.
+                all_open_slots = generate_slots(
+                    datetime.now(),
+                    prep_minutes=deps.business_config.delivery_time_minutes,
+                    closed_hours=deps.settings.business_closed_hours,
+                    include_late_night=True,
+                    count=24,
+                )
+                matched = match_slot(nlu_result.delivery_slot_text, all_open_slots)
 
         if not matched:
-            return {"tool_result": f"INVALID_SLOT: available slots are {', '.join(valid_slots)}."}
+            return {"tool_result": f"INVALID_SLOT: available slots are {', '.join(offered_slots)}."}
 
         cart = state.get("cart", [])
         customer_details = state.get("customer_details", {})
-        status = _checkout_status(cart, customer_details, matched, deps.business_config)
+        status = _checkout_status(
+            cart, customer_details, matched, deps.business_config, deps.settings.business_closed_hours
+        )
         updates: AgentState = {"delivery_slot": matched, "tool_result": status}
         if status.startswith("READY_FOR_PAYMENT"):
             updates["payment_status"] = "awaiting_screenshot"
