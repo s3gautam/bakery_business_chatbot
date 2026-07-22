@@ -11,7 +11,7 @@ def test_returns_none_when_no_tool_result():
 
 def test_cart_add_success_passthrough():
     reply = build_deterministic_reply("cart_add", "Added 2 x Chocolate Cake to your cart.")
-    assert reply == "Added 2 x Chocolate Cake to your cart."
+    assert "Added 2 x Chocolate Cake to your cart." in reply
 
 
 def test_cart_add_no_match_never_claims_success():

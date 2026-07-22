@@ -76,3 +76,14 @@ def test_nlu_prompt_handles_order_and_send_phrasing_as_cart_add():
     normalized = " ".join(prompt.split())
     assert "order 2 red velvet cakes" in normalized
     assert "send me 2 cakes" in normalized
+
+
+def test_nlu_prompt_supports_cart_swap():
+    prompt = build_nlu_system_prompt(_business_config())
+    assert "cart_swap" in prompt
+    assert "cart_new_item_name" in prompt
+
+
+def test_reply_prompt_encourages_emojis():
+    prompt = build_reply_system_prompt(get_settings(), _business_config())
+    assert "emojis" in prompt.lower()

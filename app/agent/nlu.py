@@ -12,6 +12,7 @@ _VALID_INTENTS = {
     "cart_add",
     "cart_remove",
     "cart_update",
+    "cart_swap",
     "cart_show",
     "cart_clear",
     "checkout",
@@ -34,6 +35,8 @@ class NLUResult:
     feedback_message: str | None
     cart_item_name: str | None
     cart_quantity: int | None
+    cart_new_item_name: str | None
+    cart_new_quantity: int | None
     customer_name: str | None
     customer_phone: str | None
     customer_email: str | None
@@ -110,6 +113,8 @@ class NLUService:
             feedback_message=data.get("feedback_message"),
             cart_item_name=data.get("cart_item_name"),
             cart_quantity=_safe_int(data.get("cart_quantity")),
+            cart_new_item_name=data.get("cart_new_item_name"),
+            cart_new_quantity=_safe_int(data.get("cart_new_quantity")),
             customer_name=data.get("customer_name"),
             customer_phone=data.get("customer_phone"),
             customer_email=data.get("customer_email"),

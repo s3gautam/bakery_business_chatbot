@@ -205,6 +205,27 @@ def build_graph(deps: AgentDependencies):
         )
         return {"cart": new_cart, "tool_result": message}
 
+    async def handle_cart_swap(state: AgentState) -> AgentState:
+        nlu_result: NLUResult = state["nlu_result"]
+        cart = state.get("cart", [])
+        if not nlu_result.cart_new_item_name:
+            return {"tool_result": "NO_ITEM_SPECIFIED"}
+
+        cart_after_remove = cart
+        remove_message = None
+        if nlu_result.cart_item_name:
+            cart_after_remove, remove_message = deps.cart_tool.remove(
+                cart, nlu_result.cart_item_name
+            )
+
+        new_cart, add_message = deps.cart_tool.add(
+            cart_after_remove, nlu_result.cart_new_item_name, nlu_result.cart_new_quantity or 1
+        )
+
+        if remove_message is None:
+            return {"cart": new_cart, "tool_result": add_message}
+        return {"cart": new_cart, "tool_result": f"SWAPPED\n{remove_message}\n{add_message}"}
+
     async def handle_cart_show(state: AgentState) -> AgentState:
         cart = state.get("cart", [])
         return {"tool_result": deps.cart_tool.show(cart, deps.business_config)}
@@ -395,6 +416,7 @@ def build_graph(deps: AgentDependencies):
     graph.add_node("handle_cart_add", handle_cart_add)
     graph.add_node("handle_cart_remove", handle_cart_remove)
     graph.add_node("handle_cart_update", handle_cart_update)
+    graph.add_node("handle_cart_swap", handle_cart_swap)
     graph.add_node("handle_cart_show", handle_cart_show)
     graph.add_node("handle_cart_clear", handle_cart_clear)
     graph.add_node("handle_checkout", handle_checkout)
@@ -421,6 +443,7 @@ def build_graph(deps: AgentDependencies):
             "cart_add": "handle_cart_add",
             "cart_remove": "handle_cart_remove",
             "cart_update": "handle_cart_update",
+            "cart_swap": "handle_cart_swap",
             "cart_show": "handle_cart_show",
             "cart_clear": "handle_cart_clear",
             "checkout": "handle_checkout",
@@ -439,6 +462,7 @@ def build_graph(deps: AgentDependencies):
         "handle_cart_add",
         "handle_cart_remove",
         "handle_cart_update",
+        "handle_cart_swap",
         "handle_cart_show",
         "handle_cart_clear",
         "handle_checkout",

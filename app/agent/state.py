@@ -6,6 +6,7 @@ Intent = Literal[
     "cart_add",
     "cart_remove",
     "cart_update",
+    "cart_swap",
     "cart_show",
     "cart_clear",
     "checkout",

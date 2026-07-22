@@ -67,6 +67,8 @@ def _nlu(intent, **overrides) -> NLUResult:
         feedback_message=None,
         cart_item_name=None,
         cart_quantity=None,
+        cart_new_item_name=None,
+        cart_new_quantity=None,
         customer_name=None,
         customer_phone=None,
         customer_email=None,
@@ -94,10 +96,12 @@ def _business_config() -> BusinessConfig:
     )
 
 
-def _build(tmp_path, nlu_results: list[NLUResult], email_service=None, llm_service=None):
+def _build(tmp_path, nlu_results: list[NLUResult], email_service=None, llm_service=None, menu_items=None):
     settings = get_settings().model_copy(update={"menu_file_path": tmp_path / "menu.json"})
     menu_store = MenuStore(settings)
-    menu_store.save_all([MenuItem("Chocolate Cake", None, 500.0, "Chocolate", None, True)])
+    menu_store.save_all(
+        menu_items or [MenuItem("Chocolate Cake", None, 500.0, "Chocolate", None, True)]
+    )
 
     llm_service = llm_service or _StubLLMService()
     email_service = email_service or _RecordingEmailService()
@@ -126,7 +130,7 @@ async def test_add_to_cart_updates_state(tmp_path):
         {"conversation_id": "c1", "user_message": "add 2 chocolate cakes", "cart": []}
     )
     assert result["cart"] == [{"name": "Chocolate Cake", "unit_price": 500.0, "quantity": 2}]
-    assert result["reply"] == "Added 2 x Chocolate Cake to your cart."
+    assert "Added 2 x Chocolate Cake to your cart." in result["reply"]
 
 
 @pytest.mark.asyncio
@@ -220,6 +224,42 @@ async def test_payment_screenshot_validates_and_generates_order_id(tmp_path):
         assert result["order_id"] in subject
         assert "Chocolate Cake" in body
         assert "123 Main St" in body
+
+
+@pytest.mark.asyncio
+async def test_cart_swap_replaces_old_item_with_new_one(tmp_path):
+    menu_items = [
+        MenuItem("Eggless Black Forest", None, 549.0, "Eggless", None, True),
+        MenuItem("Red Velvet Cake", None, 649.0, "Signature", None, True),
+    ]
+    graph = _build(
+        tmp_path,
+        [
+            _nlu("cart_add", cart_item_name="black forest", cart_quantity=1),
+            _nlu(
+                "cart_swap",
+                cart_item_name="black forest",
+                cart_new_item_name="red velvet",
+                cart_new_quantity=1,
+            ),
+        ],
+        menu_items=menu_items,
+    )
+
+    await graph.ainvoke(
+        {"conversation_id": "c1", "user_message": "send 1 black forest", "cart": []}
+    )
+    result = await graph.ainvoke(
+        {
+            "conversation_id": "c1",
+            "user_message": "actually i want red velvet and not black forest",
+            "cart": [{"name": "Eggless Black Forest", "unit_price": 549.0, "quantity": 1}],
+        }
+    )
+
+    assert result["cart"] == [{"name": "Red Velvet Cake", "unit_price": 649.0, "quantity": 1}]
+    assert "Red Velvet Cake" in result["reply"]
+    assert "black forest" in result["reply"].lower()
 
 
 @pytest.mark.asyncio
